@@ -5,12 +5,13 @@ Autonomous positive-news pipeline for sourcing, verifying, deduplicating, scorin
 ## What it does
 
 1. Uses OpenAI web search to find recent positive developments.
-2. Prioritizes wildlife recovery, climate/clean energy, medicine, science, technology, and social progress.
-3. Requires concrete evidence and reliable sources.
-4. Scores every story out of 50.
-5. Rejects weak stories below `MIN_SCORE`.
-6. Tracks already-published stories in SQLite.
-7. Publishes accepted stories to Telegram.
+2. Runs a separate source-verification pass over every candidate.
+3. Prioritizes wildlife recovery, climate/clean energy, medicine, science, technology, and social progress.
+4. Requires a verified primary source, underlying-development timestamp, and concrete evidence.
+5. Validates every component score and the 50-point total before editorial ranking.
+6. Deduplicates by event identity and canonical primary-source URL.
+7. Reserves deliveries in SQLite before Telegram writes to prevent timeout-driven duplicates.
+8. Publishes only when both independent safety switches are explicitly enabled.
 
 ## Local setup
 
@@ -71,6 +72,16 @@ PUBLISH_APPROVED=true
 
 Then `python3 main.py` will publish stories that pass the quality gate. Either
 switch blocks every Telegram write, including `--test-telegram`.
+
+If Telegram delivery returns an uncertain network result, the story remains
+blocked from automatic retry in SQLite. Inspect and reconcile it manually before
+attempting another send; this favors avoiding duplicate public posts.
+
+## Tests
+
+```bash
+python3 -m unittest discover -v
+```
 
 ## Deployment
 
