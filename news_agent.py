@@ -62,6 +62,15 @@ Assign exactly one evidence_level:
 - laboratory_model: cells, organoids, chips, materials, simulations, or other laboratory-only evidence
 - policy_or_deployment: a policy, regulation, infrastructure deployment, or program implementation with concrete scope, even if long-term outcome data are not yet available
 
+Impact-status rules:
+Assign exactly one impact_status:
+- measured_outcome: a positive outcome has already been measured in the real world
+- implemented_milestone: a concrete implementation, launch, approval, restoration action, infrastructure milestone, or policy change has already happened
+- validated_research_result: a study has produced a concrete supported result, even if clinical or real-world impact is not yet established
+- planned_only: funding, agreement, target, intention, future rollout, proposal, or plan without a substantive outcome or implementation milestone yet
+
+A story labeled planned_only is generally NOT suitable for publication. Funding announcements, partnerships, signed agreements, targets such as "will reach 100 million people", and future programs are not positive outcomes by themselves. Prefer what has actually changed, improved, recovered, been built, deployed, approved, measured, or demonstrated.
+
 Editorial rules:
 - Avoid clickbait, vague hope, PR-only claims, opinion pieces, celebrity news, sport, and trivial feel-good stories.
 - Verify each story with at least 2 reliable sources when possible.
@@ -74,6 +83,7 @@ Editorial rules:
 - If evidence is preliminary, laboratory-only, animal-only, observational, not yet deployed, or otherwise limited, say that clearly in summary_lt.
 - Do not describe a biomarker change as a proven patient benefit.
 - Do not describe a laboratory model as a treatment or breakthrough for patients.
+- Do not award a high positive_impact score merely for a large promised future reach; score realized or demonstrated impact more highly than ambition.
 
 Return ONLY a JSON array. Each object must be:
 {{
@@ -81,6 +91,7 @@ Return ONLY a JSON array. Each object must be:
   "summary_lt": "2-4 sentences",
   "topic": "wildlife|climate|energy|medicine|science|technology|society",
   "evidence_level": "measured_real_world|randomized_human_trial|human_early_phase|observational_human|preclinical_animal|laboratory_model|policy_or_deployment",
+  "impact_status": "measured_outcome|implemented_milestone|validated_research_result|planned_only",
   "freshness": 0,
   "credibility": 0,
   "positive_impact": 0,
