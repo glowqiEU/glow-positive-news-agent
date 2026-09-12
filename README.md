@@ -90,4 +90,7 @@ python3 -m unittest discover -v
 
 ## Deployment
 
-The intended production setup is Railway + an hourly cron job. Add the same environment variables as Railway secrets. Do not put API keys or Telegram tokens in GitHub.
+The intended production setup is Railway + an hourly cron job. Follow the
+complete [deployment and recovery runbook](DEPLOYMENT.md). Add secrets as Railway
+variables and mount persistent storage before the first run. Do not put API keys
+or Telegram tokens in GitHub.
