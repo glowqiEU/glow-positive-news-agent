@@ -37,6 +37,15 @@ VALID_IMPACT_STATUSES = {
     "planned_only",
 }
 
+VALID_POSITIVE_PROGRESS = {
+    "outcome_improved",
+    "recovery_or_restoration",
+    "effective_intervention",
+    "capability_or_tool",
+    "enabling_evidence",
+    "problem_characterization",
+}
+
 WEAK_EVIDENCE_LEVELS = {
     "preclinical_animal",
     "laboratory_model",
@@ -105,6 +114,7 @@ def run() -> None:
         topic = (story.get("topic") or "unknown").strip().lower()
         evidence_level = (story.get("evidence_level") or "").strip().lower()
         impact_status = (story.get("impact_status") or "").strip().lower()
+        positive_progress = (story.get("positive_progress") or "").strip().lower()
 
         reasons = []
         if not title:
@@ -123,6 +133,10 @@ def run() -> None:
             reasons.append("missing/invalid impact status")
         elif impact_status == "planned_only":
             reasons.append("planned-only story; no realized result or implementation milestone")
+        if positive_progress not in VALID_POSITIVE_PROGRESS:
+            reasons.append("missing/invalid positive-progress type")
+        elif positive_progress == "problem_characterization":
+            reasons.append("describes a problem but does not demonstrate positive progress")
         if evidence_level in WEAK_EVIDENCE_LEVELS and score < min_weak_evidence_score:
             reasons.append(
                 f"{evidence_level} requires score >= {min_weak_evidence_score}"
@@ -150,6 +164,7 @@ def run() -> None:
             print(f"Topic: {topic}")
             print(f"Evidence: {evidence_level}")
             print(f"Impact: {impact_status}")
+            print(f"Positive progress: {positive_progress}")
             print(f"Primary source: {primary_source}")
             print("Quality gate: PASS")
             print(post)
