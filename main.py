@@ -51,6 +51,32 @@ WEAK_EVIDENCE_LEVELS = {
     "laboratory_model",
 }
 
+IMPACT_BONUS = {
+    "measured_outcome": 5,
+    "implemented_milestone": 3,
+    "validated_research_result": 1,
+    "planned_only": -20,
+}
+
+PROGRESS_BONUS = {
+    "outcome_improved": 4,
+    "recovery_or_restoration": 4,
+    "effective_intervention": 4,
+    "capability_or_tool": 2,
+    "enabling_evidence": 0,
+    "problem_characterization": -20,
+}
+
+EVIDENCE_BONUS = {
+    "measured_real_world": 3,
+    "randomized_human_trial": 3,
+    "policy_or_deployment": 1,
+    "human_early_phase": 0,
+    "observational_human": -1,
+    "preclinical_animal": -3,
+    "laboratory_model": -3,
+}
+
 
 def is_specific_source_url(url: str) -> bool:
     """Reject obvious homepages, search pages and aggregator pages."""
@@ -80,6 +106,20 @@ def is_specific_source_url(url: str) -> bool:
     return not any(fragment in lowered for fragment in blocked_fragments)
 
 
+def editorial_score(story: dict) -> int:
+    """Rank strong, realized positive progress above merely promising research."""
+    base = int(story.get("total_score", 0))
+    evidence = (story.get("evidence_level") or "").strip().lower()
+    impact = (story.get("impact_status") or "").strip().lower()
+    progress = (story.get("positive_progress") or "").strip().lower()
+    return (
+        base
+        + EVIDENCE_BONUS.get(evidence, -5)
+        + IMPACT_BONUS.get(impact, -5)
+        + PROGRESS_BONUS.get(progress, -5)
+    )
+
+
 def format_post(story: dict) -> str:
     sources = [url for url in (story.get("source_urls") or []) if is_specific_source_url(url)]
     source_block = "\n".join(f"Šaltinis: {url}" for url in sources[:2])
@@ -92,14 +132,14 @@ def format_post(story: dict) -> str:
 
 def run() -> None:
     min_score = int(os.getenv("MIN_SCORE", "40"))
-    min_weak_evidence_score = int(os.getenv("MIN_WEAK_EVIDENCE_SCORE", "45"))
+    min_weak_evidence_score = int(os.getenv("MIN_WEAK_EVIDENCE_SCORE", "47"))
     max_stories = int(os.getenv("MAX_STORIES", "3"))
     max_per_topic = int(os.getenv("MAX_PER_TOPIC", "1"))
     dry_run = os.getenv("DRY_RUN", "true").lower() == "true"
 
     print("Searching for strong positive-news stories...")
     stories = find_positive_news()
-    stories = sorted(stories, key=lambda s: int(s.get("total_score", 0)), reverse=True)
+    stories = sorted(stories, key=editorial_score, reverse=True)
     print(f"Research returned {len(stories)} candidate(s). Applying quality gate...")
 
     accepted = 0
@@ -108,6 +148,7 @@ def run() -> None:
 
     for story in stories:
         score = int(story.get("total_score", 0))
+        rank_score = editorial_score(story)
         urls = [url for url in (story.get("source_urls") or []) if is_specific_source_url(url)]
         primary_source = (story.get("primary_source") or "").strip()
         title = story.get("title_lt", "").strip()
@@ -161,6 +202,7 @@ def run() -> None:
         if dry_run:
             print("\n--- CANDIDATE ---")
             print(f"Score: {score}/50")
+            print(f"Editorial rank: {rank_score}")
             print(f"Topic: {topic}")
             print(f"Evidence: {evidence_level}")
             print(f"Impact: {impact_status}")
