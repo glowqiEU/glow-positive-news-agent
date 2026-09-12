@@ -21,7 +21,7 @@ def find_positive_news() -> list[dict[str, Any]]:
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
     lookback_hours = int(os.getenv("LOOKBACK_HOURS", "72"))
-    max_stories = int(os.getenv("MAX_STORIES", "3"))
+    max_candidates = int(os.getenv("MAX_RESEARCH_STORIES", "8"))
 
     prompt = f"""
 You are the research editor for a Lithuanian positive-news Telegram channel.
@@ -33,6 +33,11 @@ Priorities:
 - medical and scientific breakthroughs with human relevance
 - useful technology progress
 - meaningful social progress
+
+Diversity rules:
+- Search broadly across the priority areas instead of filling the result set with one field.
+- When several stories have similar quality, prefer topic diversity.
+- Return a candidate pool, not three near-duplicates from the same research beat.
 
 Freshness rules:
 - Prefer developments whose underlying event, result, study publication, official announcement, deployment, policy effect, or measured milestone is genuinely recent.
@@ -47,6 +52,16 @@ Source rules:
 - source_urls must be direct URLs to the exact supporting article, paper, report, release, or project update.
 - primary_source must be one of the URLs in source_urls.
 
+Evidence-level rules:
+Assign exactly one evidence_level:
+- measured_real_world: measured population, environmental, infrastructure, economic, public-health, or other real-world outcome
+- randomized_human_trial: randomized human trial with a clinically meaningful outcome
+- human_early_phase: early human safety, biomarker, feasibility, or small proof-of-concept study
+- observational_human: non-randomized human observational evidence
+- preclinical_animal: animal-only evidence
+- laboratory_model: cells, organoids, chips, materials, simulations, or other laboratory-only evidence
+- policy_or_deployment: a policy, regulation, infrastructure deployment, or program implementation with concrete scope, even if long-term outcome data are not yet available
+
 Editorial rules:
 - Avoid clickbait, vague hope, PR-only claims, opinion pieces, celebrity news, sport, and trivial feel-good stories.
 - Verify each story with at least 2 reliable sources when possible.
@@ -54,15 +69,18 @@ Editorial rules:
 - A story should have a concrete result, number, milestone, trial outcome, deployment, policy effect, population change, or measured improvement.
 - Score each category 0-10: freshness, credibility, positive_impact, interestingness, specific_evidence.
 - total_score is the sum, max 50.
-- Return at most {max_stories} stories, strongest first.
+- Return at most {max_candidates} stories, strongest first.
 - Write title_lt and summary_lt in natural Lithuanian, concise and factual.
-- If a study is preliminary, laboratory-only, animal-only, observational, not yet deployed, or otherwise limited, say that clearly in summary_lt.
+- If evidence is preliminary, laboratory-only, animal-only, observational, not yet deployed, or otherwise limited, say that clearly in summary_lt.
+- Do not describe a biomarker change as a proven patient benefit.
+- Do not describe a laboratory model as a treatment or breakthrough for patients.
 
 Return ONLY a JSON array. Each object must be:
 {{
   "title_lt": "...",
   "summary_lt": "2-4 sentences",
   "topic": "wildlife|climate|energy|medicine|science|technology|society",
+  "evidence_level": "measured_real_world|randomized_human_trial|human_early_phase|observational_human|preclinical_animal|laboratory_model|policy_or_deployment",
   "freshness": 0,
   "credibility": 0,
   "positive_impact": 0,
