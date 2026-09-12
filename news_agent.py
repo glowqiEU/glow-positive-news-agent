@@ -34,9 +34,21 @@ Priorities:
 - useful technology progress
 - meaningful social progress
 
-Rules:
+Freshness rules:
+- Prefer developments whose underlying event, result, study publication, official announcement, deployment, policy effect, or measured milestone is genuinely recent.
+- Do NOT treat an old event as fresh merely because a website republished, syndicated, summarized, or resurfaced it recently.
+- If the underlying result is old and there is no meaningful new update, exclude it.
+
+Source rules:
+- Every returned story MUST include at least one real primary source that directly supports the central claim.
+- Primary sources include: the original peer-reviewed paper, official government or public-agency release, university or hospital announcement tied to the research, official project/conservation organization update, or the organization directly responsible for the measured result.
+- Do not use homepages, category pages, search pages, tag pages, generic news aggregators, or RSS/aggregator pages as evidence URLs.
+- Prefer a second independent reliable source when possible.
+- source_urls must be direct URLs to the exact supporting article, paper, report, release, or project update.
+- primary_source must be one of the URLs in source_urls.
+
+Editorial rules:
 - Avoid clickbait, vague hope, PR-only claims, opinion pieces, celebrity news, sport, and trivial feel-good stories.
-- Prefer primary sources: government agencies, universities, peer-reviewed journals, major scientific institutions, NGOs directly running a conservation program.
 - Verify each story with at least 2 reliable sources when possible.
 - Do not exaggerate causality or certainty.
 - A story should have a concrete result, number, milestone, trial outcome, deployment, policy effect, population change, or measured improvement.
@@ -44,7 +56,7 @@ Rules:
 - total_score is the sum, max 50.
 - Return at most {max_stories} stories, strongest first.
 - Write title_lt and summary_lt in natural Lithuanian, concise and factual.
-- source_urls must contain direct source URLs you actually used.
+- If a study is preliminary, laboratory-only, animal-only, observational, not yet deployed, or otherwise limited, say that clearly in summary_lt.
 
 Return ONLY a JSON array. Each object must be:
 {{
@@ -58,8 +70,8 @@ Return ONLY a JSON array. Each object must be:
   "specific_evidence": 0,
   "total_score": 0,
   "key_number": "short concrete number or milestone",
-  "source_urls": ["https://...", "https://..."],
-  "primary_source": "https://..."
+  "source_urls": ["https://exact-source-page...", "https://exact-second-source-page..."],
+  "primary_source": "https://exact-primary-source-page..."
 }}
 """
 
