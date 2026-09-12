@@ -7,4 +7,5 @@ __pycache__/
 *.pyd
 .DS_Store
 positive_news.db
+positive_news_dry_run.db
 .pytest_cache/

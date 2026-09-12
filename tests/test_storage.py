@@ -61,6 +61,29 @@ class StorageDeduplicationTests(unittest.TestCase):
                 row = conn.execute("SELECT delivery_status, delivery_error FROM stories WHERE fingerprint = 'fp'").fetchone()
             self.assertEqual(row, ("uncertain", "timeout after request"))
 
+    def test_preview_ledger_deduplicates_dry_runs_without_touching_delivery_db(self):
+        with TemporaryDirectory() as directory:
+            production_db = Path(directory) / "production.db"
+            preview_db = Path(directory) / "preview.db"
+            with patch.object(storage, "DB_PATH", production_db), patch.dict(
+                "os.environ", {"DRY_RUN_DB_PATH": str(preview_db)}, clear=False
+            ):
+                storage.mark_previewed(
+                    "preview-fp", "San Geronimo salmon", "https://agency.example/salmon",
+                    "san-geronimo-salmon-return-2026-09-11",
+                )
+                self.assertTrue(storage.has_been_previewed(
+                    "rewritten-fp", "san-geronimo-salmon-return-2026-09-11",
+                    "https://other.example/salmon",
+                ))
+                self.assertFalse(storage.has_seen(
+                    "preview-fp", "san-geronimo-salmon-return-2026-09-11",
+                    "https://agency.example/salmon",
+                ))
+                with storage._connect(production_db) as conn:
+                    count = conn.execute("SELECT COUNT(*) FROM stories").fetchone()[0]
+                self.assertEqual(count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

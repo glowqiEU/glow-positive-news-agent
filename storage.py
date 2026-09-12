@@ -1,4 +1,5 @@
 import hashlib
+import os
 import re
 import sqlite3
 from pathlib import Path
@@ -7,8 +8,8 @@ from typing import Iterable, Optional
 DB_PATH = Path("positive_news.db")
 
 
-def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+def _connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
+    conn = sqlite3.connect(db_path or DB_PATH)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS stories (
@@ -45,8 +46,9 @@ def normalize_event_key(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
 
 
-def has_seen(fp: str, event_key: str = "", primary_url: str = "") -> bool:
-    with _connect() as conn:
+def has_seen(fp: str, event_key: str = "", primary_url: str = "",
+             db_path: Optional[Path] = None) -> bool:
+    with _connect(db_path) as conn:
         normalized_key = normalize_event_key(event_key)
         row = conn.execute(
             """
@@ -59,6 +61,28 @@ def has_seen(fp: str, event_key: str = "", primary_url: str = "") -> bool:
             (fp, normalized_key, normalized_key, primary_url, primary_url, primary_url),
         ).fetchone()
         return row is not None
+
+
+def dry_run_db_path() -> Path:
+    return Path(os.getenv("DRY_RUN_DB_PATH", "positive_news_dry_run.db"))
+
+
+def has_been_previewed(fp: str, event_key: str = "", primary_url: str = "") -> bool:
+    return has_seen(fp, event_key, primary_url, dry_run_db_path())
+
+
+def mark_previewed(fp: str, title: str, primary_url: Optional[str], event_key: str = "") -> None:
+    """Record a dry-run preview separately; this must never affect live delivery state."""
+    with _connect(dry_run_db_path()) as conn:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO stories
+                (fingerprint, title, primary_url, event_key, canonical_primary_url, delivery_status)
+            VALUES (?, ?, ?, ?, ?, 'previewed')
+            """,
+            (fp, title, primary_url, normalize_event_key(event_key), primary_url),
+        )
+        conn.commit()
 
 
 def mark_seen(fp: str, title: str, primary_url: Optional[str], event_key: str = "") -> None:

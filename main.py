@@ -10,7 +10,9 @@ from news_agent import find_positive_news
 from storage import (
     complete_delivery,
     fingerprint,
+    has_been_previewed,
     has_seen,
+    mark_previewed,
     normalize_event_key,
     record_delivery_uncertain,
     reserve_delivery,
@@ -92,6 +94,10 @@ def run() -> None:
             rejected += 1
             print(f"Skipped duplicate: {title}")
             continue
+        if dry_run and has_been_previewed(fp, event_key, primary_source):
+            rejected += 1
+            print(f"Skipped duplicate dry-run preview: {title}")
+            continue
 
         post = format_post({**story, "source_urls": urls})
         if dry_run:
@@ -106,6 +112,7 @@ def run() -> None:
             print(f"Verification: {story.get('verification_notes', '').strip()}")
             print("Quality gate: PASS")
             print(post)
+            mark_previewed(fp, title, primary_source, event_key)
         else:
             if not reserve_delivery(fp, title, primary_source, event_key):
                 rejected += 1
