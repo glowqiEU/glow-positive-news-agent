@@ -73,6 +73,38 @@ class EditorialValidationTests(unittest.TestCase):
             reasons(story),
         )
 
+    def test_human_early_phase_score_44_is_rejected(self):
+        story = valid_story()
+        story.update({
+            "evidence_level": "human_early_phase",
+            "impact_status": "validated_research_result",
+            "positive_progress": "enabling_evidence",
+            "freshness": 9,
+            "credibility": 9,
+            "positive_impact": 8,
+            "interestingness": 9,
+            "specific_evidence": 9,
+            "total_score": 44,
+            "summary_lt": "Nedidelis ankstyvos fazės tyrimas pateikė preliminarų rezultatą; klinikinė nauda dar neįrodyta.",
+        })
+        self.assertIn("human_early_phase requires score >= 45", reasons(story))
+
+    def test_human_early_phase_score_45_remains_eligible_when_other_gates_pass(self):
+        story = valid_story()
+        story.update({
+            "evidence_level": "human_early_phase",
+            "impact_status": "validated_research_result",
+            "positive_progress": "enabling_evidence",
+            "freshness": 9,
+            "credibility": 9,
+            "positive_impact": 8,
+            "interestingness": 9,
+            "specific_evidence": 10,
+            "total_score": 45,
+            "summary_lt": "Nedidelis ankstyvos fazės tyrimas pateikė preliminarų rezultatą; klinikinė nauda dar neįrodyta.",
+        })
+        self.assertEqual(reasons(story), [])
+
 
 if __name__ == "__main__":
     unittest.main()
