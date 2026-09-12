@@ -30,6 +30,13 @@ VALID_EVIDENCE_LEVELS = {
     "policy_or_deployment",
 }
 
+VALID_IMPACT_STATUSES = {
+    "measured_outcome",
+    "implemented_milestone",
+    "validated_research_result",
+    "planned_only",
+}
+
 WEAK_EVIDENCE_LEVELS = {
     "preclinical_animal",
     "laboratory_model",
@@ -97,6 +104,7 @@ def run() -> None:
         title = story.get("title_lt", "").strip()
         topic = (story.get("topic") or "unknown").strip().lower()
         evidence_level = (story.get("evidence_level") or "").strip().lower()
+        impact_status = (story.get("impact_status") or "").strip().lower()
 
         reasons = []
         if not title:
@@ -111,6 +119,10 @@ def run() -> None:
             reasons.append("primary source not included in source_urls")
         if evidence_level not in VALID_EVIDENCE_LEVELS:
             reasons.append("missing/invalid evidence level")
+        if impact_status not in VALID_IMPACT_STATUSES:
+            reasons.append("missing/invalid impact status")
+        elif impact_status == "planned_only":
+            reasons.append("planned-only story; no realized result or implementation milestone")
         if evidence_level in WEAK_EVIDENCE_LEVELS and score < min_weak_evidence_score:
             reasons.append(
                 f"{evidence_level} requires score >= {min_weak_evidence_score}"
@@ -137,6 +149,7 @@ def run() -> None:
             print(f"Score: {score}/50")
             print(f"Topic: {topic}")
             print(f"Evidence: {evidence_level}")
+            print(f"Impact: {impact_status}")
             print(f"Primary source: {primary_source}")
             print("Quality gate: PASS")
             print(post)
