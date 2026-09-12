@@ -61,6 +61,65 @@ class StorageDeduplicationTests(unittest.TestCase):
                 row = conn.execute("SELECT delivery_status, delivery_error FROM stories WHERE fingerprint = 'fp'").fetchone()
             self.assertEqual(row, ("uncertain", "timeout after request"))
 
+    def test_database_path_environment_selects_persistent_location(self):
+        with TemporaryDirectory() as directory:
+            configured = Path(directory) / "volume" / "stories.db"
+            configured.parent.mkdir()
+            with patch.dict("os.environ", {"DATABASE_PATH": str(configured)}, clear=False):
+                self.assertEqual(storage.production_db_path(), configured)
+                with storage._connect() as conn:
+                    journal_mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
+                self.assertTrue(configured.exists())
+                self.assertEqual(journal_mode, "wal")
+
+    def test_uncertain_delivery_requires_explicit_resolution(self):
+        with TemporaryDirectory() as directory, patch.object(
+            storage, "DB_PATH", Path(directory) / "stories.db"
+        ), patch.dict("os.environ", {}, clear=True):
+            storage.reserve_delivery("fp", "Title", "https://primary.example/a", "event")
+            storage.record_delivery_uncertain("fp", "timeout")
+            self.assertEqual(len(storage.list_uncertain_deliveries()), 1)
+            self.assertTrue(storage.resolve_uncertain_delivery("fp", "published"))
+            self.assertEqual(storage.list_uncertain_deliveries(), [])
+            self.assertTrue(storage.has_seen("fp", "event", "https://primary.example/a"))
+
+    def test_retry_resolution_releases_only_uncertain_row(self):
+        with TemporaryDirectory() as directory, patch.object(
+            storage, "DB_PATH", Path(directory) / "stories.db"
+        ), patch.dict("os.environ", {}, clear=True):
+            storage.reserve_delivery("fp", "Title", "https://primary.example/a", "event")
+            storage.record_delivery_uncertain("fp", "timeout")
+            self.assertTrue(storage.resolve_uncertain_delivery("fp", "retry"))
+            self.assertFalse(storage.has_seen("fp", "event", "https://primary.example/a"))
+
+    def test_storage_validation_rejects_shared_database_file(self):
+        with TemporaryDirectory() as directory:
+            shared = str(Path(directory) / "shared.db")
+            with patch.dict("os.environ", {
+                "DATABASE_PATH": shared,
+                "DRY_RUN_DB_PATH": shared,
+            }, clear=True):
+                with self.assertRaisesRegex(RuntimeError, "must be different"):
+                    storage.validate_storage_configuration()
+
+    def test_railway_storage_requires_absolute_paths(self):
+        with patch.dict("os.environ", {
+            "DATABASE_PATH": "positive_news.db",
+            "DRY_RUN_DB_PATH": "positive_news_dry_run.db",
+            "RAILWAY_ENVIRONMENT_ID": "environment-id",
+        }, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "requires absolute"):
+                storage.validate_storage_configuration()
+
+    def test_railway_storage_accepts_distinct_writable_absolute_paths(self):
+        with TemporaryDirectory() as directory:
+            with patch.dict("os.environ", {
+                "DATABASE_PATH": str(Path(directory) / "production.db"),
+                "DRY_RUN_DB_PATH": str(Path(directory) / "preview.db"),
+                "RAILWAY_ENVIRONMENT_NAME": "production",
+            }, clear=True):
+                storage.validate_storage_configuration()
+
     def test_preview_ledger_deduplicates_dry_runs_without_touching_delivery_db(self):
         with TemporaryDirectory() as directory:
             production_db = Path(directory) / "production.db"

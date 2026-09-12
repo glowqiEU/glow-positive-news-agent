@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -12,10 +13,13 @@ from storage import (
     fingerprint,
     has_been_previewed,
     has_seen,
+    list_uncertain_deliveries,
     mark_previewed,
     normalize_event_key,
     record_delivery_uncertain,
     reserve_delivery,
+    resolve_uncertain_delivery,
+    validate_storage_configuration,
 )
 from telegram import publishing_is_approved, send_telegram_message
 
@@ -31,6 +35,7 @@ def format_post(story: dict) -> str:
 
 
 def run() -> None:
+    validate_storage_configuration()
     min_score = int(os.getenv("MIN_SCORE", "40"))
     min_early_human_score = int(os.getenv("MIN_EARLY_HUMAN_SCORE", "45"))
     min_observational_score = int(os.getenv("MIN_OBSERVATIONAL_SCORE", "44"))
@@ -145,12 +150,34 @@ def test_telegram() -> None:
     print("Telegram test message sent.")
 
 
+def show_uncertain_deliveries() -> None:
+    validate_storage_configuration()
+    rows = list_uncertain_deliveries()
+    print(json.dumps(rows, ensure_ascii=False, indent=2))
+
+
+def resolve_uncertain(fingerprint_value: str, resolution: str) -> None:
+    validate_storage_configuration()
+    if not resolve_uncertain_delivery(fingerprint_value, resolution):
+        raise RuntimeError("No matching uncertain delivery was found")
+    print(f"Uncertain delivery resolved as {resolution}: {fingerprint_value}")
+
+
 if __name__ == "__main__":
     load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("--test-telegram", action="store_true")
+    parser.add_argument("--list-uncertain", action="store_true")
+    parser.add_argument("--resolve-uncertain", metavar="FINGERPRINT")
+    parser.add_argument("--resolution", choices=("published", "retry"))
     args = parser.parse_args()
     if args.test_telegram:
         test_telegram()
+    elif args.list_uncertain:
+        show_uncertain_deliveries()
+    elif args.resolve_uncertain:
+        if not args.resolution:
+            parser.error("--resolve-uncertain requires --resolution")
+        resolve_uncertain(args.resolve_uncertain, args.resolution)
     else:
         run()
