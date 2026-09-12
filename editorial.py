@@ -9,6 +9,7 @@ VALID_EVIDENCE_LEVELS = {"measured_real_world", "randomized_human_trial", "human
 VALID_IMPACT_STATUSES = {"measured_outcome", "implemented_milestone", "validated_research_result", "planned_only"}
 VALID_POSITIVE_PROGRESS = {"outcome_improved", "recovery_or_restoration", "effective_intervention", "capability_or_tool", "enabling_evidence", "problem_characterization"}
 VALID_PRIMARY_SOURCE_TYPES = {"peer_reviewed_paper", "government_or_public_agency", "official_dataset_or_report", "university_or_hospital", "responsible_organization", "regulator"}
+VALID_PROGRESS_SIGNIFICANCE = {"meaningful", "temporary_or_routine"}
 IMPACT_BONUS = {"measured_outcome": 5, "implemented_milestone": 3, "validated_research_result": 1, "planned_only": -20}
 PROGRESS_BONUS = {"outcome_improved": 4, "recovery_or_restoration": 4, "effective_intervention": 4, "capability_or_tool": 2, "enabling_evidence": 0, "problem_characterization": -20}
 EVIDENCE_BONUS = {"measured_real_world": 3, "randomized_human_trial": 3, "policy_or_deployment": 1, "human_early_phase": 0, "observational_human": -1, "preclinical_animal": -3, "laboratory_model": -3}
@@ -80,6 +81,7 @@ def rejection_reasons(story: dict, *, now: datetime, lookback_hours: int, min_sc
     evidence = _normalized(story, "evidence_level")
     impact = _normalized(story, "impact_status")
     progress = _normalized(story, "positive_progress")
+    significance = _normalized(story, "progress_significance")
     if not title:
         reasons.append("missing title")
     if not summary:
@@ -118,6 +120,10 @@ def rejection_reasons(story: dict, *, now: datetime, lookback_hours: int, min_sc
         reasons.append("missing/invalid positive-progress type")
     elif progress == "problem_characterization":
         reasons.append("describes a problem but does not demonstrate positive progress")
+    if significance not in VALID_PROGRESS_SIGNIFICANCE:
+        reasons.append("missing/invalid progress significance")
+    elif significance == "temporary_or_routine":
+        reasons.append("temporary absence or routine status is not strong positive progress")
     development_at = _parse_datetime(story.get("development_at"))
     if development_at is None:
         reasons.append("missing/invalid development timestamp")

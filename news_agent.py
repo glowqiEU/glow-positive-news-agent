@@ -37,7 +37,8 @@ def _merge_verification(candidates: list[dict[str, Any]], audits: list[dict[str,
     for index, candidate in enumerate(candidates):
         audit = {} if index in duplicate_indices else audit_by_index.get(index, {})
         checks_pass = all(audit.get(key) is True for key in (
-            "primary_source_verified", "claim_supported", "freshness_verified"
+            "primary_source_verified", "claim_supported", "freshness_verified",
+            "significance_verified",
         ))
         if audit.get("verified") is not True or not checks_pass:
             continue
@@ -47,6 +48,7 @@ def _merge_verification(candidates: list[dict[str, Any]], audits: list[dict[str,
             merged["summary_lt"] = corrected_summary.strip()
         merged["verification_status"] = "verified"
         merged["verification_notes"] = str(audit.get("verification_notes") or "").strip()
+        merged["progress_significance"] = str(audit.get("progress_significance") or "").strip()
         verified.append(merged)
     return verified
 
@@ -120,6 +122,12 @@ Assign exactly one positive_progress type:
 
 Do NOT treat problem_characterization as positive news merely because the finding is scientifically interesting. For example, discovering a new association between a disease marker and worse symptoms is not a positive-news story unless the same development also demonstrates a useful intervention, diagnostic capability, prevention benefit, or other concrete progress.
 
+Significance rules:
+- Set progress_significance to meaningful only when the development demonstrates a consequential improvement, sustained trend or recovery, effective intervention, or substantively useful new capability.
+- Set it to temporary_or_routine when the central claim is merely that a harmful organism, pollutant, disease, incident, or other problem was not detected in one routine reporting period; that conditions are temporarily normal; or simply that nothing bad happened.
+- A temporary absence can be meaningful only when the evidence establishes a sustained recovery/trend or a clearly consequential improvement beyond ordinary week-to-week variation.
+- temporary_or_routine candidates are not suitable for publication.
+
 Editorial rules:
 - Avoid clickbait, vague hope, PR-only claims, opinion pieces, celebrity news, sport, and trivial feel-good stories.
 - Verify each story with at least 2 reliable sources when possible.
@@ -143,6 +151,7 @@ Return ONLY a JSON array. Each object must be:
   "evidence_level": "measured_real_world|randomized_human_trial|human_early_phase|observational_human|preclinical_animal|laboratory_model|policy_or_deployment",
   "impact_status": "measured_outcome|implemented_milestone|validated_research_result|planned_only",
   "positive_progress": "outcome_improved|recovery_or_restoration|effective_intervention|capability_or_tool|enabling_evidence|problem_characterization",
+  "progress_significance": "meaningful|temporary_or_routine",
   "freshness": 0,
   "credibility": 0,
   "positive_impact": 0,
@@ -178,6 +187,7 @@ For each candidate:
 - Verify development_at against the date of the underlying result, milestone, implementation, or official announcement—not a repost date.
 - Reject material older than {lookback_hours} hours relative to {research_time}, unless the source documents a genuinely new material update within the window.
 - Reject causal overstatement, patient-benefit overstatement, planned-only activity, problem characterization presented as progress, and claims that cannot be checked.
+- Independently classify progress_significance. A routine weekly non-detection, temporary absence of harm, normal conditions, or "nothing bad happened" is temporary_or_routine unless the sources establish a sustained recovery/trend or clearly consequential improvement.
 - Correct summary_lt only to narrow or qualify an otherwise supported candidate. Never rescue an unsupported central claim.
 - When uncertain or unable to access the evidence, set verified=false. Do not guess.
 
@@ -188,6 +198,8 @@ Return ONLY a JSON array with exactly one audit object per candidate:
   "primary_source_verified": true,
   "claim_supported": true,
   "freshness_verified": true,
+  "significance_verified": true,
+  "progress_significance": "meaningful|temporary_or_routine",
   "verification_notes": "concise audit trail, including what the primary source supports and any limitation",
   "corrected_summary_lt": "complete publication-safe Lithuanian summary, or empty string if unchanged"
 }}

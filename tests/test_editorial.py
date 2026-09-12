@@ -12,6 +12,7 @@ def valid_story():
         "summary_lt": "Oficiali stebėsena patvirtino pamatuotą rezultatą.",
         "topic": "wildlife", "evidence_level": "measured_real_world",
         "impact_status": "measured_outcome", "positive_progress": "recovery_or_restoration",
+        "progress_significance": "meaningful",
         "freshness": 9, "credibility": 9, "positive_impact": 8,
         "interestingness": 7, "specific_evidence": 9, "total_score": 42,
         "development_at": "2026-09-11T15:00:00Z",
@@ -60,6 +61,17 @@ class EditorialValidationTests(unittest.TestCase):
     def test_rejects_problem_characterization(self):
         story = valid_story(); story["positive_progress"] = "problem_characterization"
         self.assertTrue(any("does not demonstrate positive progress" in item for item in reasons(story)))
+
+    def test_rejects_routine_temporary_absence_of_harm(self):
+        story = valid_story()
+        story["title_lt"] = "Šią savaitę Floridoje raudonojo potvynio neaptikta"
+        story["summary_lt"] = "Rutininė savaitinė stebėsena organizmo neaptiko."
+        story["positive_progress"] = "outcome_improved"
+        story["progress_significance"] = "temporary_or_routine"
+        self.assertIn(
+            "temporary absence or routine status is not strong positive progress",
+            reasons(story),
+        )
 
 
 if __name__ == "__main__":

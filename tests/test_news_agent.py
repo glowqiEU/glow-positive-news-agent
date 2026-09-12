@@ -12,10 +12,12 @@ class ResearchVerificationTests(unittest.TestCase):
         candidates = [{"title_lt": "A", "summary_lt": "old"}, {"title_lt": "B"}]
         audits = [
             {"candidate_index": 0, "verified": True, "primary_source_verified": True,
-             "claim_supported": True, "freshness_verified": True,
+             "claim_supported": True, "freshness_verified": True, "significance_verified": True,
+             "progress_significance": "meaningful",
              "verification_notes": "checked", "corrected_summary_lt": "narrowed"},
             {"candidate_index": 1, "verified": True, "primary_source_verified": True,
-             "claim_supported": False, "freshness_verified": True},
+             "claim_supported": False, "freshness_verified": True, "significance_verified": True,
+             "progress_significance": "meaningful"},
         ]
         result = _merge_verification(candidates, audits)
         self.assertEqual(len(result), 1)
@@ -25,11 +27,26 @@ class ResearchVerificationTests(unittest.TestCase):
     def test_duplicate_audit_index_fails_closed(self):
         candidates = [{"title_lt": "A"}]
         passing = {"candidate_index": 0, "verified": True, "primary_source_verified": True,
-                   "claim_supported": True, "freshness_verified": True}
+                   "claim_supported": True, "freshness_verified": True,
+                   "significance_verified": True, "progress_significance": "meaningful"}
         self.assertEqual(_merge_verification(candidates, [passing, passing]), [])
 
     def test_missing_audit_fails_closed(self):
         self.assertEqual(_merge_verification([{"title_lt": "A"}], []), [])
+
+    def test_temporary_red_tide_absence_fails_verification(self):
+        candidates = [{"title_lt": "Red tide not detected this week"}]
+        audits = [{
+            "candidate_index": 0,
+            "verified": True,
+            "primary_source_verified": True,
+            "claim_supported": True,
+            "freshness_verified": True,
+            "significance_verified": False,
+            "progress_significance": "temporary_or_routine",
+            "verification_notes": "Routine weekly non-detection only.",
+        }]
+        self.assertEqual(_merge_verification(candidates, audits), [])
 
 
 if __name__ == "__main__":
