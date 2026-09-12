@@ -19,7 +19,7 @@ Updated: 2026-09-12 UTC
 
 ## Verification performed
 
-- `python3 -m unittest discover -v`: 25 tests passing.
+- `python3 -m unittest discover -v`: 35 tests passing, including a fresh-clone run.
 - `python3 -m compileall`: passing for application and test modules.
 - `git diff --check`: passing.
 - No live research run: this workspace has no `OPENAI_API_KEY`.
