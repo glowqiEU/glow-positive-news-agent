@@ -1,5 +1,6 @@
 import argparse
 import os
+from collections import defaultdict
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -17,6 +18,21 @@ GENERIC_PATH_MARKERS = {
     "/aggregator",
     "/latest",
     "/home",
+}
+
+VALID_EVIDENCE_LEVELS = {
+    "measured_real_world",
+    "randomized_human_trial",
+    "human_early_phase",
+    "observational_human",
+    "preclinical_animal",
+    "laboratory_model",
+    "policy_or_deployment",
+}
+
+WEAK_EVIDENCE_LEVELS = {
+    "preclinical_animal",
+    "laboratory_model",
 }
 
 
@@ -60,20 +76,27 @@ def format_post(story: dict) -> str:
 
 def run() -> None:
     min_score = int(os.getenv("MIN_SCORE", "40"))
+    min_weak_evidence_score = int(os.getenv("MIN_WEAK_EVIDENCE_SCORE", "45"))
+    max_stories = int(os.getenv("MAX_STORIES", "3"))
+    max_per_topic = int(os.getenv("MAX_PER_TOPIC", "1"))
     dry_run = os.getenv("DRY_RUN", "true").lower() == "true"
 
     print("Searching for strong positive-news stories...")
     stories = find_positive_news()
+    stories = sorted(stories, key=lambda s: int(s.get("total_score", 0)), reverse=True)
     print(f"Research returned {len(stories)} candidate(s). Applying quality gate...")
 
     accepted = 0
     rejected = 0
+    topic_counts = defaultdict(int)
 
     for story in stories:
         score = int(story.get("total_score", 0))
         urls = [url for url in (story.get("source_urls") or []) if is_specific_source_url(url)]
         primary_source = (story.get("primary_source") or "").strip()
         title = story.get("title_lt", "").strip()
+        topic = (story.get("topic") or "unknown").strip().lower()
+        evidence_level = (story.get("evidence_level") or "").strip().lower()
 
         reasons = []
         if not title:
@@ -86,6 +109,16 @@ def run() -> None:
             reasons.append("missing/weak primary source")
         elif primary_source not in urls:
             reasons.append("primary source not included in source_urls")
+        if evidence_level not in VALID_EVIDENCE_LEVELS:
+            reasons.append("missing/invalid evidence level")
+        if evidence_level in WEAK_EVIDENCE_LEVELS and score < min_weak_evidence_score:
+            reasons.append(
+                f"{evidence_level} requires score >= {min_weak_evidence_score}"
+            )
+        if topic_counts[topic] >= max_per_topic:
+            reasons.append(f"topic cap reached for {topic}")
+        if accepted >= max_stories:
+            reasons.append(f"run cap reached ({max_stories})")
 
         if reasons:
             rejected += 1
@@ -102,6 +135,8 @@ def run() -> None:
         if dry_run:
             print("\n--- CANDIDATE ---")
             print(f"Score: {score}/50")
+            print(f"Topic: {topic}")
+            print(f"Evidence: {evidence_level}")
             print(f"Primary source: {primary_source}")
             print("Quality gate: PASS")
             print(post)
@@ -109,6 +144,8 @@ def run() -> None:
             send_telegram_message(post)
             mark_seen(fp, title, primary_source)
             print(f"Published: {title}")
+
+        topic_counts[topic] += 1
         accepted += 1
 
     print(f"\nRun complete: {accepted} accepted, {rejected} rejected/skipped.")
