@@ -59,6 +59,11 @@ python3 main.py
 ```
 
 The agent searches and scores stories but only prints accepted candidates in the terminal.
+Accepted previews are recorded in the separate `positive_news_dry_run.db` ledger,
+so consecutive dry runs can exercise event-level deduplication. This preview
+ledger is never consulted by live delivery and cannot suppress a later real post.
+Delete only this preview database when you intentionally want to repeat dry-run
+candidates from scratch.
 
 ## Enable publishing
 

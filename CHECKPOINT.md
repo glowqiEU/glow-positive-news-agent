@@ -19,7 +19,7 @@ Updated: 2026-09-12 UTC
 
 ## Verification performed
 
-- `python3 -m unittest discover -v`: 21 tests passing.
+- `python3 -m unittest discover -v`: 25 tests passing.
 - `python3 -m compileall`: passing for application and test modules.
 - `git diff --check`: passing.
 - No live research run: this workspace has no `OPENAI_API_KEY`.
@@ -33,6 +33,21 @@ Updated: 2026-09-12 UTC
 - Delivery rows marked `uncertain` require manual reconciliation because Telegram's send API does not provide an idempotency key.
 - API retry/backoff and structured operational run logs are not yet implemented.
 
+## QA follow-up: repeated preview and weak transient progress
+
+- Dry-run candidates now use a separate `positive_news_dry_run.db` ledger, allowing
+  consecutive runs to validate event/source deduplication without writing to or
+  suppressing stories in the production delivery database.
+- `progress_significance` now distinguishes meaningful progress from temporary or
+  routine status. Weekly non-detection, normal conditions, and “nothing bad
+  happened” are rejected unless sources establish sustained recovery, a meaningful
+  trend, or clearly consequential improvement.
+- Both discovery and independent verification prompts enforce this distinction;
+  deterministic validation rejects `temporary_or_routine` candidates.
+
 ## Next action
 
-Run several API-backed dry runs with `DRY_RUN=true`, review false positives and rejection reasons, then add bounded research retry/backoff and fixture-based end-to-end pipeline tests before considering any publication approval.
+Run two consecutive API-backed dry runs with `DRY_RUN=true` to confirm that an
+accepted first-run event is skipped from the preview ledger on the second run,
+and confirm transient routine-status candidates are rejected. Publishing remains
+out of scope.
