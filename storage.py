@@ -1,7 +1,7 @@
 import hashlib
 import sqlite3
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Optional
 
 DB_PATH = Path("positive_news.db")
 
@@ -32,7 +32,7 @@ def has_seen(fp: str) -> bool:
         return row is not None
 
 
-def mark_seen(fp: str, title: str, primary_url: str | None) -> None:
+def mark_seen(fp: str, title: str, primary_url: Optional[str]) -> None:
     with _connect() as conn:
         conn.execute(
             "INSERT OR IGNORE INTO stories (fingerprint, title, primary_url) VALUES (?, ?, ?)",
