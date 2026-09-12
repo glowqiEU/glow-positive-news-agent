@@ -7,7 +7,14 @@ from dotenv import load_dotenv
 
 from editorial import canonicalize_url, editorial_score, ordered_sources, rejection_reasons
 from news_agent import find_positive_news
-from storage import fingerprint, has_seen, mark_seen, normalize_event_key
+from storage import (
+    complete_delivery,
+    fingerprint,
+    has_seen,
+    normalize_event_key,
+    record_delivery_uncertain,
+    reserve_delivery,
+)
 from telegram import publishing_is_approved, send_telegram_message
 
 
@@ -100,8 +107,16 @@ def run() -> None:
             print("Quality gate: PASS")
             print(post)
         else:
-            send_telegram_message(post)
-            mark_seen(fp, title, primary_source, event_key)
+            if not reserve_delivery(fp, title, primary_source, event_key):
+                rejected += 1
+                print(f"Skipped duplicate delivery reservation: {title}")
+                continue
+            try:
+                send_telegram_message(post)
+            except Exception as exc:
+                record_delivery_uncertain(fp, f"{type(exc).__name__}: {exc}")
+                raise
+            complete_delivery(fp)
             print(f"Published: {title}")
 
         topic_counts[topic] += 1

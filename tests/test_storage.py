@@ -36,6 +36,30 @@ class StorageDeduplicationTests(unittest.TestCase):
                 columns = {row[1] for row in conn.execute("PRAGMA table_info(stories)")}
             self.assertIn("event_key", columns)
             self.assertIn("canonical_primary_url", columns)
+            self.assertIn("delivery_status", columns)
+            self.assertIn("delivery_error", columns)
+
+    def test_delivery_reservation_is_atomic_and_completable(self):
+        with TemporaryDirectory() as directory, patch.object(
+            storage, "DB_PATH", Path(directory) / "stories.db"
+        ):
+            self.assertTrue(storage.reserve_delivery("fp", "Title", "https://primary.example/a", "event"))
+            self.assertFalse(storage.reserve_delivery("fp", "Title", "https://primary.example/a", "event"))
+            storage.complete_delivery("fp")
+            with storage._connect() as conn:
+                row = conn.execute("SELECT delivery_status FROM stories WHERE fingerprint = 'fp'").fetchone()
+            self.assertEqual(row[0], "published")
+
+    def test_uncertain_delivery_remains_deduplicated(self):
+        with TemporaryDirectory() as directory, patch.object(
+            storage, "DB_PATH", Path(directory) / "stories.db"
+        ):
+            storage.reserve_delivery("fp", "Title", "https://primary.example/a", "event")
+            storage.record_delivery_uncertain("fp", "timeout after request")
+            self.assertTrue(storage.has_seen("fp", "event", "https://primary.example/a"))
+            with storage._connect() as conn:
+                row = conn.execute("SELECT delivery_status, delivery_error FROM stories WHERE fingerprint = 'fp'").fetchone()
+            self.assertEqual(row, ("uncertain", "timeout after request"))
 
 
 if __name__ == "__main__":
