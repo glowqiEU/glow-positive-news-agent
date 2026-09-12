@@ -1,5 +1,7 @@
 import argparse
 import os
+from urllib.parse import urlparse
+
 from dotenv import load_dotenv
 
 from news_agent import find_positive_news
@@ -7,8 +9,47 @@ from storage import fingerprint, has_seen, mark_seen
 from telegram import send_telegram_message
 
 
+GENERIC_PATH_MARKERS = {
+    "",
+    "/",
+    "/news",
+    "/search",
+    "/aggregator",
+    "/latest",
+    "/home",
+}
+
+
+def is_specific_source_url(url: str) -> bool:
+    """Reject obvious homepages, search pages and aggregator pages."""
+    try:
+        parsed = urlparse(url.strip())
+    except Exception:
+        return False
+
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return False
+
+    path = (parsed.path or "/").rstrip("/") or "/"
+    if path.lower() in GENERIC_PATH_MARKERS:
+        return False
+
+    lowered = f"{path}?{parsed.query}".lower()
+    blocked_fragments = (
+        "/search/",
+        "?search=",
+        "?q=",
+        "/tag/",
+        "/tags/",
+        "/category/",
+        "/categories/",
+        "/aggregator/",
+    )
+    return not any(fragment in lowered for fragment in blocked_fragments)
+
+
 def format_post(story: dict) -> str:
-    sources = story.get("source_urls") or []
+    sources = [url for url in (story.get("source_urls") or []) if is_specific_source_url(url)]
     source_block = "\n".join(f"Šaltinis: {url}" for url in sources[:2])
     return (
         f"{story['title_lt']}\n\n"
@@ -21,31 +62,56 @@ def run() -> None:
     min_score = int(os.getenv("MIN_SCORE", "40"))
     dry_run = os.getenv("DRY_RUN", "true").lower() == "true"
 
+    print("Searching for strong positive-news stories...")
     stories = find_positive_news()
+    print(f"Research returned {len(stories)} candidate(s). Applying quality gate...")
+
     accepted = 0
+    rejected = 0
 
     for story in stories:
         score = int(story.get("total_score", 0))
-        urls = story.get("source_urls") or []
+        urls = [url for url in (story.get("source_urls") or []) if is_specific_source_url(url)]
+        primary_source = (story.get("primary_source") or "").strip()
         title = story.get("title_lt", "").strip()
-        if not title or score < min_score or not urls:
+
+        reasons = []
+        if not title:
+            reasons.append("missing title")
+        if score < min_score:
+            reasons.append(f"score {score} < {min_score}")
+        if not urls:
+            reasons.append("no specific source URL")
+        if not primary_source or not is_specific_source_url(primary_source):
+            reasons.append("missing/weak primary source")
+        elif primary_source not in urls:
+            reasons.append("primary source not included in source_urls")
+
+        if reasons:
+            rejected += 1
+            print(f"Rejected: {title or '[untitled]'} — {', '.join(reasons)}")
             continue
 
         fp = fingerprint(title, urls)
         if has_seen(fp):
+            rejected += 1
+            print(f"Skipped duplicate: {title}")
             continue
 
-        post = format_post(story)
+        post = format_post({**story, "source_urls": urls})
         if dry_run:
             print("\n--- CANDIDATE ---")
             print(f"Score: {score}/50")
+            print(f"Primary source: {primary_source}")
+            print("Quality gate: PASS")
             print(post)
         else:
             send_telegram_message(post)
-            mark_seen(fp, title, story.get("primary_source") or urls[0])
+            mark_seen(fp, title, primary_source)
             print(f"Published: {title}")
         accepted += 1
 
+    print(f"\nRun complete: {accepted} accepted, {rejected} rejected/skipped.")
     if accepted == 0:
         print("No new stories passed the quality gate.")
 
