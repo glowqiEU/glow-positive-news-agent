@@ -71,6 +71,17 @@ Assign exactly one impact_status:
 
 A story labeled planned_only is generally NOT suitable for publication. Funding announcements, partnerships, signed agreements, targets such as "will reach 100 million people", and future programs are not positive outcomes by themselves. Prefer what has actually changed, improved, recovered, been built, deployed, approved, measured, or demonstrated.
 
+Positive-progress rules:
+Assign exactly one positive_progress type:
+- outcome_improved: a meaningful health, environmental, social, economic, or infrastructure outcome measurably improved
+- recovery_or_restoration: a species, ecosystem, habitat, population, or natural system measurably recovered or was substantively restored
+- effective_intervention: a treatment, prevention, policy, technology, or intervention demonstrated beneficial effect
+- capability_or_tool: a new tool, method, platform, material, model, or technical capability was actually demonstrated and has credible practical value
+- enabling_evidence: research produced evidence that materially strengthens a known solution or intervention, without yet proving a direct outcome
+- problem_characterization: the main result only describes, detects, maps, predicts, or better characterizes a problem, risk, disease mechanism, or harm without demonstrating a positive intervention, recovery, capability, or improvement
+
+Do NOT treat problem_characterization as positive news merely because the finding is scientifically interesting. For example, discovering a new association between a disease marker and worse symptoms is not a positive-news story unless the same development also demonstrates a useful intervention, diagnostic capability, prevention benefit, or other concrete progress.
+
 Editorial rules:
 - Avoid clickbait, vague hope, PR-only claims, opinion pieces, celebrity news, sport, and trivial feel-good stories.
 - Verify each story with at least 2 reliable sources when possible.
@@ -84,6 +95,7 @@ Editorial rules:
 - Do not describe a biomarker change as a proven patient benefit.
 - Do not describe a laboratory model as a treatment or breakthrough for patients.
 - Do not award a high positive_impact score merely for a large promised future reach; score realized or demonstrated impact more highly than ambition.
+- Prefer genuinely good news over merely novel science.
 
 Return ONLY a JSON array. Each object must be:
 {{
@@ -92,6 +104,7 @@ Return ONLY a JSON array. Each object must be:
   "topic": "wildlife|climate|energy|medicine|science|technology|society",
   "evidence_level": "measured_real_world|randomized_human_trial|human_early_phase|observational_human|preclinical_animal|laboratory_model|policy_or_deployment",
   "impact_status": "measured_outcome|implemented_milestone|validated_research_result|planned_only",
+  "positive_progress": "outcome_improved|recovery_or_restoration|effective_intervention|capability_or_tool|enabling_evidence|problem_characterization",
   "freshness": 0,
   "credibility": 0,
   "positive_impact": 0,
