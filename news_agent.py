@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from datetime import datetime, timezone
 from typing import Any
 
 from openai import OpenAI
@@ -22,10 +23,12 @@ def find_positive_news() -> list[dict[str, Any]]:
     model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
     lookback_hours = int(os.getenv("LOOKBACK_HOURS", "72"))
     max_candidates = int(os.getenv("MAX_RESEARCH_STORIES", "8"))
+    research_time = datetime.now(timezone.utc).isoformat()
 
     prompt = f"""
 You are the research editor for a Lithuanian positive-news Telegram channel.
 Search the web for genuinely strong positive developments published or materially updated within the last {lookback_hours} hours.
+The research run time is {research_time}. Use it as the fixed reference for freshness judgments.
 
 Priorities:
 - species recovery, rewilding, habitat restoration, conservation wins
@@ -43,6 +46,7 @@ Freshness rules:
 - Prefer developments whose underlying event, result, study publication, official announcement, deployment, policy effect, or measured milestone is genuinely recent.
 - Do NOT treat an old event as fresh merely because a website republished, syndicated, summarized, or resurfaced it recently.
 - If the underlying result is old and there is no meaningful new update, exclude it.
+- development_at must identify the underlying development, not a later article that resurfaced it.
 
 Source rules:
 - Every returned story MUST include at least one real primary source that directly supports the central claim.
@@ -112,8 +116,11 @@ Return ONLY a JSON array. Each object must be:
   "specific_evidence": 0,
   "total_score": 0,
   "key_number": "short concrete number or milestone",
+  "development_at": "ISO 8601 timestamp with timezone for the underlying development",
   "source_urls": ["https://exact-source-page...", "https://exact-second-source-page..."],
-  "primary_source": "https://exact-primary-source-page..."
+  "primary_source": "https://exact-primary-source-page...",
+  "primary_source_type": "peer_reviewed_paper|government_or_public_agency|official_dataset_or_report|university_or_hospital|responsible_organization|regulator",
+  "primary_evidence": "one concise sentence stating exactly what the primary source supports"
 }}
 """
 
