@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 GENERIC_PATH_MARKERS = {"", "/", "/news", "/search", "/aggregator", "/latest", "/home"}
@@ -148,7 +149,7 @@ def _integer(value: object, default: int) -> int:
         return default
 
 
-def _parse_datetime(value: object) -> datetime | None:
+def _parse_datetime(value: object) -> Optional[datetime]:
     if not isinstance(value, str) or not value.strip():
         return None
     try:
