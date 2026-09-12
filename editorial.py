@@ -100,6 +100,10 @@ def rejection_reasons(story: dict, *, now: datetime, lookback_hours: int, min_sc
         reasons.append("missing/invalid primary source type")
     if not str(story.get("primary_evidence") or "").strip():
         reasons.append("missing primary-source evidence note")
+    if _normalized(story, "verification_status") != "verified":
+        reasons.append("candidate did not pass independent verification")
+    if not str(story.get("verification_notes") or "").strip():
+        reasons.append("missing verification audit trail")
     event_key = str(story.get("event_key") or "").strip()
     if not event_key or len(event_key) > 160:
         reasons.append("missing/invalid event key")

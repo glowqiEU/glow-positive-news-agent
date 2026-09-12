@@ -41,7 +41,7 @@ def run() -> None:
     print("Searching for strong positive-news stories...")
     stories = find_positive_news()
     stories = sorted(stories, key=editorial_score, reverse=True)
-    print(f"Research returned {len(stories)} candidate(s). Applying quality gate...")
+    print(f"Research and verification returned {len(stories)} candidate(s). Applying quality gate...")
 
     accepted = 0
     rejected = 0
@@ -96,6 +96,7 @@ def run() -> None:
             print(f"Impact: {impact_status}")
             print(f"Positive progress: {positive_progress}")
             print(f"Primary source: {primary_source}")
+            print(f"Verification: {story.get('verification_notes', '').strip()}")
             print("Quality gate: PASS")
             print(post)
         else:
