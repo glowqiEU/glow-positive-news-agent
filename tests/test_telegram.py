@@ -2,7 +2,9 @@ import os
 import unittest
 from unittest.mock import patch
 
-from telegram import PublishingNotApprovedError, send_telegram_message
+import requests
+
+from telegram import PublishingNotApprovedError, TelegramDeliveryError, send_telegram_message
 
 
 class TelegramSafetyTests(unittest.TestCase):
@@ -50,6 +52,21 @@ class TelegramSafetyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 send_telegram_message("x" * 4097)
         post.assert_not_called()
+
+    @patch("telegram.requests.post")
+    def test_network_error_is_sanitized_without_bot_token(self, post):
+        secret = "super-secret-token"
+        post.side_effect = requests.Timeout(f"timeout at https://api.telegram.org/bot{secret}/sendMessage")
+        env = {
+            "DRY_RUN": "false",
+            "PUBLISH_APPROVED": "true",
+            "TELEGRAM_BOT_TOKEN": secret,
+            "TELEGRAM_CHANNEL_ID": "@channel",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            with self.assertRaises(TelegramDeliveryError) as raised:
+                send_telegram_message("candidate")
+        self.assertNotIn(secret, str(raised.exception))
 
 
 if __name__ == "__main__":

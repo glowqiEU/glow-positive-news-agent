@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import MagicMock, patch
 
-from news_agent import _extract_json, _merge_verification
+from news_agent import _extract_json, _merge_verification, find_positive_news
 
 
 class ResearchVerificationTests(unittest.TestCase):
@@ -47,6 +48,20 @@ class ResearchVerificationTests(unittest.TestCase):
             "verification_notes": "Routine weekly non-detection only.",
         }]
         self.assertEqual(_merge_verification(candidates, audits), [])
+
+    @patch("news_agent.OpenAI")
+    def test_openai_client_uses_bounded_timeout_and_retries(self, openai):
+        client = MagicMock()
+        client.responses.create.return_value.output_text = "[]"
+        openai.return_value = client
+        env = {
+            "OPENAI_API_KEY": "test-key",
+            "OPENAI_TIMEOUT_SECONDS": "45",
+            "OPENAI_MAX_RETRIES": "3",
+        }
+        with patch.dict("os.environ", env, clear=False):
+            self.assertEqual(find_positive_news(), [])
+        openai.assert_called_once_with(api_key="test-key", timeout=45.0, max_retries=3)
 
 
 if __name__ == "__main__":

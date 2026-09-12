@@ -54,7 +54,11 @@ def _merge_verification(candidates: list[dict[str, Any]], audits: list[dict[str,
 
 
 def find_positive_news() -> list[dict[str, Any]]:
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    client = OpenAI(
+        api_key=os.environ["OPENAI_API_KEY"],
+        timeout=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "180")),
+        max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "2")),
+    )
     model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
     lookback_hours = int(os.getenv("LOOKBACK_HOURS", "72"))
     max_candidates = int(os.getenv("MAX_RESEARCH_STORIES", "8"))

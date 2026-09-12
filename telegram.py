@@ -9,6 +9,10 @@ class PublishingNotApprovedError(RuntimeError):
     """Raised when a process tries to publish without an explicit approval gate."""
 
 
+class TelegramDeliveryError(RuntimeError):
+    """A sanitized delivery error that never includes the bot token URL."""
+
+
 def publishing_is_approved() -> bool:
     """Require two independent, explicit switches before any Telegram write."""
     dry_run = os.getenv("DRY_RUN", "true").strip().lower()
@@ -33,13 +37,18 @@ def send_telegram_message(text: str) -> None:
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat_id = os.environ["TELEGRAM_CHANNEL_ID"]
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    response = requests.post(
-        url,
-        json={
-            "chat_id": chat_id,
-            "text": text,
-            "disable_web_page_preview": False,
-        },
-        timeout=30,
-    )
-    response.raise_for_status()
+    try:
+        response = requests.post(
+            url,
+            json={
+                "chat_id": chat_id,
+                "text": text,
+                "disable_web_page_preview": False,
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        raise TelegramDeliveryError(
+            f"Telegram delivery failed with {type(exc).__name__}; delivery state is uncertain"
+        ) from None
