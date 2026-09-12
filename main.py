@@ -46,11 +46,6 @@ VALID_POSITIVE_PROGRESS = {
     "problem_characterization",
 }
 
-WEAK_EVIDENCE_LEVELS = {
-    "preclinical_animal",
-    "laboratory_model",
-}
-
 IMPACT_BONUS = {
     "measured_outcome": 5,
     "implemented_milestone": 3,
@@ -120,8 +115,19 @@ def editorial_score(story: dict) -> int:
     )
 
 
+def ordered_sources(story: dict) -> list[str]:
+    """Keep the declared primary source first, then independent/supporting sources."""
+    urls = [url for url in (story.get("source_urls") or []) if is_specific_source_url(url)]
+    primary = (story.get("primary_source") or "").strip()
+    ordered = []
+    if primary and primary in urls:
+        ordered.append(primary)
+    ordered.extend(url for url in urls if url != primary)
+    return ordered
+
+
 def format_post(story: dict) -> str:
-    sources = [url for url in (story.get("source_urls") or []) if is_specific_source_url(url)]
+    sources = ordered_sources(story)
     source_block = "\n".join(f"Šaltinis: {url}" for url in sources[:2])
     return (
         f"{story['title_lt']}\n\n"
@@ -132,6 +138,8 @@ def format_post(story: dict) -> str:
 
 def run() -> None:
     min_score = int(os.getenv("MIN_SCORE", "40"))
+    min_early_human_score = int(os.getenv("MIN_EARLY_HUMAN_SCORE", "45"))
+    min_observational_score = int(os.getenv("MIN_OBSERVATIONAL_SCORE", "44"))
     min_weak_evidence_score = int(os.getenv("MIN_WEAK_EVIDENCE_SCORE", "47"))
     max_stories = int(os.getenv("MAX_STORIES", "3"))
     max_per_topic = int(os.getenv("MAX_PER_TOPIC", "1"))
@@ -149,7 +157,7 @@ def run() -> None:
     for story in stories:
         score = int(story.get("total_score", 0))
         rank_score = editorial_score(story)
-        urls = [url for url in (story.get("source_urls") or []) if is_specific_source_url(url)]
+        urls = ordered_sources(story)
         primary_source = (story.get("primary_source") or "").strip()
         title = story.get("title_lt", "").strip()
         topic = (story.get("topic") or "unknown").strip().lower()
@@ -178,10 +186,14 @@ def run() -> None:
             reasons.append("missing/invalid positive-progress type")
         elif positive_progress == "problem_characterization":
             reasons.append("describes a problem but does not demonstrate positive progress")
-        if evidence_level in WEAK_EVIDENCE_LEVELS and score < min_weak_evidence_score:
-            reasons.append(
-                f"{evidence_level} requires score >= {min_weak_evidence_score}"
-            )
+
+        if evidence_level == "human_early_phase" and score < min_early_human_score:
+            reasons.append(f"human_early_phase requires score >= {min_early_human_score}")
+        if evidence_level == "observational_human" and score < min_observational_score:
+            reasons.append(f"observational_human requires score >= {min_observational_score}")
+        if evidence_level in {"preclinical_animal", "laboratory_model"} and score < min_weak_evidence_score:
+            reasons.append(f"{evidence_level} requires score >= {min_weak_evidence_score}")
+
         if topic_counts[topic] >= max_per_topic:
             reasons.append(f"topic cap reached for {topic}")
         if accepted >= max_stories:
