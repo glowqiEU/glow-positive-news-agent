@@ -31,6 +31,7 @@ TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHANNEL_ID=@your_channel_username
 OPENAI_MODEL=gpt-5.6-luna
 DRY_RUN=true
+PUBLISH_APPROVED=false
 MIN_SCORE=40
 MAX_STORIES=3
 LOOKBACK_HOURS=72
@@ -38,10 +39,10 @@ LOOKBACK_HOURS=72
 
 Never commit `.env`.
 
-## Test Telegram first
+## Test Telegram only after explicit approval
 
 ```bash
-python3 main.py --test-telegram
+DRY_RUN=false PUBLISH_APPROVED=true python3 main.py --test-telegram
 ```
 
 If everything is connected, the channel receives:
@@ -60,13 +61,16 @@ The agent searches and scores stories but only prints accepted candidates in the
 
 ## Enable publishing
 
-After reviewing the first results, change:
+After reviewing the results and explicitly approving publication, both safety
+switches must be changed:
 
 ```env
 DRY_RUN=false
+PUBLISH_APPROVED=true
 ```
 
-Then `python3 main.py` will publish stories that pass the quality gate.
+Then `python3 main.py` will publish stories that pass the quality gate. Either
+switch blocks every Telegram write, including `--test-telegram`.
 
 ## Deployment
 

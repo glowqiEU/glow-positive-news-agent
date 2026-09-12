@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from news_agent import find_positive_news
 from storage import fingerprint, has_seen, mark_seen
-from telegram import send_telegram_message
+from telegram import publishing_is_approved, send_telegram_message
 
 
 GENERIC_PATH_MARKERS = {
@@ -145,6 +145,12 @@ def run() -> None:
     max_per_topic = int(os.getenv("MAX_PER_TOPIC", "1"))
     dry_run = os.getenv("DRY_RUN", "true").lower() == "true"
 
+    if not dry_run and not publishing_is_approved():
+        raise RuntimeError(
+            "Live mode requested but publishing is not approved. Keep DRY_RUN=true, "
+            "or set PUBLISH_APPROVED=true only after explicit editorial approval."
+        )
+
     print("Searching for strong positive-news stories...")
     stories = find_positive_news()
     stories = sorted(stories, key=editorial_score, reverse=True)
@@ -236,6 +242,10 @@ def run() -> None:
 
 
 def test_telegram() -> None:
+    if not publishing_is_approved():
+        raise RuntimeError(
+            "Telegram test is a real public write and is locked without explicit approval."
+        )
     send_telegram_message("✅ Glow Positive News botas prijungtas ir veikia.")
     print("Telegram test message sent.")
 
