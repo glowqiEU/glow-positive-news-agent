@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 
-from editorial import editorial_score, ordered_sources, rejection_reasons
+from editorial import canonicalize_url, editorial_score, ordered_sources, rejection_reasons
 from news_agent import find_positive_news
-from storage import fingerprint, has_seen, mark_seen
+from storage import fingerprint, has_seen, mark_seen, normalize_event_key
 from telegram import publishing_is_approved, send_telegram_message
 
 
@@ -46,17 +46,20 @@ def run() -> None:
     accepted = 0
     rejected = 0
     topic_counts = defaultdict(int)
+    run_event_keys = set()
+    run_primary_urls = set()
 
     for story in stories:
         score = int(story.get("total_score", 0))
         rank_score = editorial_score(story)
         urls = ordered_sources(story)
-        primary_source = (story.get("primary_source") or "").strip()
+        primary_source = canonicalize_url(story.get("primary_source") or "")
         title = story.get("title_lt", "").strip()
         topic = (story.get("topic") or "unknown").strip().lower()
         evidence_level = (story.get("evidence_level") or "").strip().lower()
         impact_status = (story.get("impact_status") or "").strip().lower()
         positive_progress = (story.get("positive_progress") or "").strip().lower()
+        event_key = normalize_event_key(str(story.get("event_key") or ""))
 
         reasons = rejection_reasons(
             story, now=run_started_at, lookback_hours=lookback_hours,
@@ -69,6 +72,8 @@ def run() -> None:
             reasons.append(f"topic cap reached for {topic}")
         if accepted >= max_stories:
             reasons.append(f"run cap reached ({max_stories})")
+        if event_key in run_event_keys or (primary_source and primary_source in run_primary_urls):
+            reasons.append("duplicate event within current run")
 
         if reasons:
             rejected += 1
@@ -76,7 +81,7 @@ def run() -> None:
             continue
 
         fp = fingerprint(title, urls)
-        if has_seen(fp):
+        if has_seen(fp, event_key, primary_source):
             rejected += 1
             print(f"Skipped duplicate: {title}")
             continue
@@ -95,10 +100,12 @@ def run() -> None:
             print(post)
         else:
             send_telegram_message(post)
-            mark_seen(fp, title, primary_source)
+            mark_seen(fp, title, primary_source, event_key)
             print(f"Published: {title}")
 
         topic_counts[topic] += 1
+        run_event_keys.add(event_key)
+        run_primary_urls.add(primary_source)
         accepted += 1
 
     print(f"\nRun complete: {accepted} accepted, {rejected} rejected/skipped.")

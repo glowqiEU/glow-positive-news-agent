@@ -55,6 +55,7 @@ Source rules:
 - Prefer a second independent reliable source when possible.
 - source_urls must be direct URLs to the exact supporting article, paper, report, release, or project update.
 - primary_source must be one of the URLs in source_urls.
+- event_key must identify the underlying event rather than the article. Build it from stable English terms: main entity, concrete development, and YYYY-MM-DD date (for example "finland-wind-record-2026-09-11"). Reuse the same key for candidates about the same event.
 
 Evidence-level rules:
 Assign exactly one evidence_level:
@@ -120,7 +121,8 @@ Return ONLY a JSON array. Each object must be:
   "source_urls": ["https://exact-source-page...", "https://exact-second-source-page..."],
   "primary_source": "https://exact-primary-source-page...",
   "primary_source_type": "peer_reviewed_paper|government_or_public_agency|official_dataset_or_report|university_or_hospital|responsible_organization|regulator",
-  "primary_evidence": "one concise sentence stating exactly what the primary source supports"
+  "primary_evidence": "one concise sentence stating exactly what the primary source supports",
+  "event_key": "stable-entity-development-yyyy-mm-dd"
 }}
 """
 

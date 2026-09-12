@@ -100,6 +100,9 @@ def rejection_reasons(story: dict, *, now: datetime, lookback_hours: int, min_sc
         reasons.append("missing/invalid primary source type")
     if not str(story.get("primary_evidence") or "").strip():
         reasons.append("missing primary-source evidence note")
+    event_key = str(story.get("event_key") or "").strip()
+    if not event_key or len(event_key) > 160:
+        reasons.append("missing/invalid event key")
     if evidence not in VALID_EVIDENCE_LEVELS:
         reasons.append("missing/invalid evidence level")
     if impact not in VALID_IMPACT_STATUSES:

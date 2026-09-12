@@ -19,6 +19,7 @@ def valid_story():
         "primary_source": "https://agency.example/report/123",
         "primary_source_type": "government_or_public_agency",
         "primary_evidence": "The agency reports the measured return.",
+        "event_key": "agency-rare-species-return-2026-09-11",
     }
 
 
