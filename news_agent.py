@@ -53,21 +53,31 @@ def _merge_verification(candidates: list[dict[str, Any]], audits: list[dict[str,
     return verified
 
 
-def find_positive_news() -> list[dict[str, Any]]:
-    client = OpenAI(
-        api_key=os.environ["OPENAI_API_KEY"],
-        timeout=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "180")),
-        max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "2")),
-    )
-    model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
-    lookback_hours = int(os.getenv("LOOKBACK_HOURS", "72"))
-    max_candidates = int(os.getenv("MAX_RESEARCH_STORIES", "8"))
-    research_time = datetime.now(timezone.utc).isoformat()
-
-    prompt = f"""
+def _build_research_prompt(lookback_hours: int, max_candidates: int, research_time: str) -> str:
+    return f"""
 You are the research editor for a Lithuanian positive-news Telegram channel.
 Search the web for genuinely strong positive developments published or materially updated within the last {lookback_hours} hours.
 The research run time is {research_time}. Use it as the fixed reference for freshness judgments.
+
+Discovery method — mandatory:
+- Do NOT search primarily for phrases such as "positive news", "good news", or generic feel-good roundups. Search for evidence that something in the real world actually changed, improved, recovered, was implemented, was approved, was deployed, was restored, or produced a strong measured result.
+- Perform multiple independent discovery passes across different beats before ranking candidates. Do not let the first successful search determine the whole candidate pool.
+- Use concrete change-oriented search angles such as implemented, took effect, approved, opened, launched, deployed, connected, restored, reintroduced, recovered, population increased, emissions fell, trial improved, standard introduced, access expanded, protection enacted, milestone reached, and measured outcome.
+- Search both primary-source domains and reliable reporting that can lead you to a primary source. The discovery article itself does not need to be the evidence source.
+- Build a broad candidate pool from the separate discovery passes, merge stories about the same underlying event, then apply the evidence and editorial rules below.
+- Prefer stories where a non-specialist can understand what concretely became better and why it matters to people, animals, ecosystems, or society. Do not lower evidence standards to achieve human interest.
+
+Discovery passes to cover independently:
+1. Health and medicine: newly approved or implemented treatments, care standards, public-health interventions, or strong human trial results with concrete patient relevance.
+2. Nature and wildlife: measured species recovery, successful reintroduction, habitat restoration, ecosystem repair, conservation interventions already underway, or concrete protection milestones.
+3. Climate and clean energy: projects that became operational or connected, measured emissions reductions, retirements/replacements of polluting infrastructure, or real deployment milestones rather than targets.
+4. Society and public systems: protections, access, safety, education, rights, or service reforms that took effect or were implemented with concrete scope.
+5. Science and technology: demonstrated capabilities with credible practical value, prioritizing human or real-world validation over laboratory novelty.
+
+Useful benchmark pattern:
+- Strong: a new patient-care standard adopted after evidence of a systemic problem and now applying across a real health system.
+- Strong: a restoration project whose construction or field intervention has actually begun, described as an implementation milestone rather than proof that the ecosystem has already recovered.
+- Weak: a partnership announcement, funding promise, aspirational target, routine weekly non-detection, or interesting problem description with no positive intervention or improvement.
 
 Priorities:
 - species recovery, rewilding, habitat restoration, conservation wins
@@ -126,6 +136,8 @@ Assign exactly one positive_progress type:
 
 Do NOT treat problem_characterization as positive news merely because the finding is scientifically interesting. For example, discovering a new association between a disease marker and worse symptoms is not a positive-news story unless the same development also demonstrates a useful intervention, diagnostic capability, prevention benefit, or other concrete progress.
 
+Do not label a project start as measured recovery merely because restoration is its goal. An implementation milestone can be publication-worthy while its eventual ecological or social outcome remains explicitly unproven.
+
 Significance rules:
 - Set progress_significance to meaningful only when the development demonstrates a consequential improvement, sustained trend or recovery, effective intervention, or substantively useful new capability.
 - Set it to temporary_or_routine when the central claim is merely that a harmful organism, pollutant, disease, incident, or other problem was not detected in one routine reporting period; that conditions are temporarily normal; or simply that nothing bad happened.
@@ -172,6 +184,20 @@ Return ONLY a JSON array. Each object must be:
 }}
 """
 
+
+def find_positive_news() -> list[dict[str, Any]]:
+    client = OpenAI(
+        api_key=os.environ["OPENAI_API_KEY"],
+        timeout=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "180")),
+        max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "2")),
+    )
+    model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
+    lookback_hours = int(os.getenv("LOOKBACK_HOURS", "72"))
+    max_candidates = int(os.getenv("MAX_RESEARCH_STORIES", "8"))
+    research_time = datetime.now(timezone.utc).isoformat()
+
+    prompt = _build_research_prompt(lookback_hours, max_candidates, research_time)
+
     response = client.responses.create(
         model=model,
         tools=[{"type": "web_search"}],
@@ -192,6 +218,7 @@ For each candidate:
 - Reject material older than {lookback_hours} hours relative to {research_time}, unless the source documents a genuinely new material update within the window.
 - Reject causal overstatement, patient-benefit overstatement, planned-only activity, problem characterization presented as progress, and claims that cannot be checked.
 - Independently classify progress_significance. A routine weekly non-detection, temporary absence of harm, normal conditions, or "nothing bad happened" is temporary_or_routine unless the sources establish a sustained recovery/trend or clearly consequential improvement.
+- For restoration or reform launches, distinguish an implemented milestone from a measured recovery or outcome. Do not infer success merely because implementation began.
 - Correct summary_lt only to narrow or qualify an otherwise supported candidate. Never rescue an unsupported central claim.
 - When uncertain or unable to access the evidence, set verified=false. Do not guess.
 
