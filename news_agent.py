@@ -38,9 +38,14 @@ def _merge_verification(candidates: list[dict[str, Any]], audits: list[dict[str,
         audit = {} if index in duplicate_indices else audit_by_index.get(index, {})
         checks_pass = all(audit.get(key) is True for key in (
             "primary_source_verified", "claim_supported", "freshness_verified",
-            "significance_verified",
+            "significance_verified", "real_world_significance_verified",
         ))
         if audit.get("verified") is not True or not checks_pass:
+            continue
+        real_world_significance = audit.get("real_world_significance")
+        if isinstance(real_world_significance, bool) or not isinstance(real_world_significance, int):
+            continue
+        if real_world_significance < 0 or real_world_significance > 10:
             continue
         corrected_summary = audit.get("corrected_summary_lt")
         merged = dict(candidate)
@@ -49,6 +54,7 @@ def _merge_verification(candidates: list[dict[str, Any]], audits: list[dict[str,
         merged["verification_status"] = "verified"
         merged["verification_notes"] = str(audit.get("verification_notes") or "").strip()
         merged["progress_significance"] = str(audit.get("progress_significance") or "").strip()
+        merged["real_world_significance"] = real_world_significance
         verified.append(merged)
     return verified
 
@@ -144,6 +150,15 @@ Significance rules:
 - A temporary absence can be meaningful only when the evidence establishes a sustained recovery/trend or a clearly consequential improvement beyond ordinary week-to-week variation.
 - temporary_or_routine candidates are not suitable for publication.
 
+Real-world significance rules:
+- Score real_world_significance from 0 to 10 separately from evidence quality, novelty, and interestingness. This score asks: even if the story is true, how much concrete positive difference does this development make or credibly begin to make for people, animals, ecosystems, or society?
+- 0-3: mostly technical novelty, routine administration, PR milestone, or demonstration with no demonstrated material benefit.
+- 4-5: plausible or limited real-world benefit, early deployment, or useful capability whose practical benefit is still mostly prospective.
+- 6-7: concrete meaningful benefit to a defined group/system, a substantive intervention already underway, or a strong validated human/real-world result.
+- 8-10: major direct measured benefit, substantial system change, strong recovery, or unusually consequential improvement with clear real-world stakes.
+- Do not inflate this score because a technology is futuristic, because a source calls something historic, or because future scale could be large.
+- A demonstration such as an eVTOL pilot with no demonstrated transport, emissions, safety, or access benefit should generally remain below 6. A treatment approval for an unmet need, a strong patient-outcome trial, measured species recovery, or a substantive restoration intervention may be 6 or higher when the evidence supports that significance.
+
 Editorial rules:
 - Avoid clickbait, vague hope, PR-only claims, opinion pieces, celebrity news, sport, and trivial feel-good stories.
 - Verify each story with at least 2 reliable sources when possible.
@@ -168,6 +183,7 @@ Return ONLY a JSON array. Each object must be:
   "impact_status": "measured_outcome|implemented_milestone|validated_research_result|planned_only",
   "positive_progress": "outcome_improved|recovery_or_restoration|effective_intervention|capability_or_tool|enabling_evidence|problem_characterization",
   "progress_significance": "meaningful|temporary_or_routine",
+  "real_world_significance": 0,
   "freshness": 0,
   "credibility": 0,
   "positive_impact": 0,
@@ -218,6 +234,8 @@ For each candidate:
 - Reject material older than {lookback_hours} hours relative to {research_time}, unless the source documents a genuinely new material update within the window.
 - Reject causal overstatement, patient-benefit overstatement, planned-only activity, problem characterization presented as progress, and claims that cannot be checked.
 - Independently classify progress_significance. A routine weekly non-detection, temporary absence of harm, normal conditions, or "nothing bad happened" is temporary_or_routine unless the sources establish a sustained recovery/trend or clearly consequential improvement.
+- Independently score real_world_significance from 0 to 10 using the same rubric: 0-3 technical/routine with no material demonstrated benefit; 4-5 plausible or limited/early practical benefit; 6-7 concrete meaningful benefit or substantive intervention; 8-10 major direct measured benefit or substantial system change. Score what has happened now, not promised future scale.
+- Mark real_world_significance_verified=true only when the sources are sufficient to support that significance score. If the practical significance is unclear, score conservatively or set verified=false.
 - For restoration or reform launches, distinguish an implemented milestone from a measured recovery or outcome. Do not infer success merely because implementation began.
 - Correct summary_lt only to narrow or qualify an otherwise supported candidate. Never rescue an unsupported central claim.
 - When uncertain or unable to access the evidence, set verified=false. Do not guess.
@@ -230,7 +248,9 @@ Return ONLY a JSON array with exactly one audit object per candidate:
   "claim_supported": true,
   "freshness_verified": true,
   "significance_verified": true,
+  "real_world_significance_verified": true,
   "progress_significance": "meaningful|temporary_or_routine",
+  "real_world_significance": 0,
   "verification_notes": "concise audit trail, including what the primary source supports and any limitation",
   "corrected_summary_lt": "complete publication-safe Lithuanian summary, or empty string if unchanged"
 }}
