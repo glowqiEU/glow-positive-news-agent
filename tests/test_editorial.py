@@ -12,7 +12,7 @@ def valid_story():
         "summary_lt": "Oficiali stebėsena patvirtino pamatuotą rezultatą.",
         "topic": "wildlife", "evidence_level": "measured_real_world",
         "impact_status": "measured_outcome", "positive_progress": "recovery_or_restoration",
-        "progress_significance": "meaningful",
+        "progress_significance": "meaningful", "real_world_significance": 8,
         "freshness": 9, "credibility": 9, "positive_impact": 8,
         "interestingness": 7, "specific_evidence": 9, "total_score": 42,
         "development_at": "2026-09-11T15:00:00Z",
@@ -29,7 +29,7 @@ def valid_story():
 def reasons(story):
     return rejection_reasons(story, now=NOW, lookback_hours=72, min_score=40,
                              min_early_human_score=45, min_observational_score=44,
-                             min_weak_evidence_score=47)
+                             min_weak_evidence_score=47, min_real_world_significance=6)
 
 
 class EditorialValidationTests(unittest.TestCase):
@@ -72,6 +72,20 @@ class EditorialValidationTests(unittest.TestCase):
             "temporary absence or routine status is not strong positive progress",
             reasons(story),
         )
+
+    def test_rejects_low_real_world_significance(self):
+        story = valid_story()
+        story["topic"] = "technology"
+        story["evidence_level"] = "policy_or_deployment"
+        story["impact_status"] = "implemented_milestone"
+        story["positive_progress"] = "capability_or_tool"
+        story["real_world_significance"] = 5
+        self.assertIn("real_world_significance 5 < 6", reasons(story))
+
+    def test_requires_real_world_significance(self):
+        story = valid_story()
+        story.pop("real_world_significance")
+        self.assertIn("missing/invalid real-world significance score", reasons(story))
 
     def test_human_early_phase_score_44_is_rejected(self):
         story = valid_story()

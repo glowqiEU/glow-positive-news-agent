@@ -40,6 +40,7 @@ def run() -> None:
     min_early_human_score = int(os.getenv("MIN_EARLY_HUMAN_SCORE", "45"))
     min_observational_score = int(os.getenv("MIN_OBSERVATIONAL_SCORE", "44"))
     min_weak_evidence_score = int(os.getenv("MIN_WEAK_EVIDENCE_SCORE", "47"))
+    min_real_world_significance = int(os.getenv("MIN_REAL_WORLD_SIGNIFICANCE", "6"))
     max_stories = int(os.getenv("MAX_STORIES", "3"))
     max_per_topic = int(os.getenv("MAX_PER_TOPIC", "1"))
     lookback_hours = int(os.getenv("LOOKBACK_HOURS", "72"))
@@ -73,6 +74,7 @@ def run() -> None:
         evidence_level = (story.get("evidence_level") or "").strip().lower()
         impact_status = (story.get("impact_status") or "").strip().lower()
         positive_progress = (story.get("positive_progress") or "").strip().lower()
+        real_world_significance = story.get("real_world_significance")
         event_key = normalize_event_key(str(story.get("event_key") or ""))
 
         reasons = rejection_reasons(
@@ -80,6 +82,7 @@ def run() -> None:
             min_score=min_score, min_early_human_score=min_early_human_score,
             min_observational_score=min_observational_score,
             min_weak_evidence_score=min_weak_evidence_score,
+            min_real_world_significance=min_real_world_significance,
         )
 
         if topic_counts[topic] >= max_per_topic:
@@ -109,6 +112,7 @@ def run() -> None:
             print("\n--- CANDIDATE ---")
             print(f"Score: {score}/50")
             print(f"Editorial rank: {rank_score}")
+            print(f"Real-world significance: {real_world_significance}/10")
             print(f"Topic: {topic}")
             print(f"Evidence: {evidence_level}")
             print(f"Impact: {impact_status}")

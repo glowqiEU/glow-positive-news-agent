@@ -19,6 +19,7 @@ def salmon_story():
         "impact_status": "measured_outcome",
         "positive_progress": "recovery_or_restoration",
         "progress_significance": "meaningful",
+        "real_world_significance": 8,
         "freshness": 9,
         "credibility": 9,
         "positive_impact": 8,
@@ -58,6 +59,7 @@ class DryRunWorkflowTests(unittest.TestCase):
             rendered = output.getvalue()
             self.assertEqual(rendered.count("--- CANDIDATE ---"), 1)
             self.assertIn("Skipped duplicate dry-run preview", rendered)
+            self.assertIn("Real-world significance: 8/10", rendered)
             send.assert_not_called()
             with storage._connect(production_db) as conn:
                 production_count = conn.execute("SELECT COUNT(*) FROM stories").fetchone()[0]
