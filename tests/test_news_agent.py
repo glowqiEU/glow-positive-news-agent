@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from news_agent import _extract_json, _merge_verification, find_positive_news
+from news_agent import _build_research_prompt, _extract_json, _merge_verification, find_positive_news
 
 
 class ResearchVerificationTests(unittest.TestCase):
@@ -49,6 +49,19 @@ class ResearchVerificationTests(unittest.TestCase):
         }]
         self.assertEqual(_merge_verification(candidates, audits), [])
 
+    def test_research_prompt_uses_multi_angle_real_world_change_discovery(self):
+        prompt = _build_research_prompt(72, 8, "2026-09-13T08:00:00+00:00")
+        self.assertIn('Do NOT search primarily for phrases such as "positive news"', prompt)
+        self.assertIn("Perform multiple independent discovery passes", prompt)
+        self.assertIn("Health and medicine", prompt)
+        self.assertIn("Nature and wildlife", prompt)
+        self.assertIn("Climate and clean energy", prompt)
+        self.assertIn("Society and public systems", prompt)
+        self.assertIn("Science and technology", prompt)
+        self.assertIn("implemented, took effect, approved, opened, launched, deployed", prompt)
+        self.assertIn("implementation milestone rather than proof that the ecosystem has already recovered", prompt)
+        self.assertIn("Do not lower evidence standards to achieve human interest", prompt)
+
     @patch("news_agent.OpenAI")
     def test_openai_client_uses_bounded_timeout_and_retries(self, openai):
         client = MagicMock()
@@ -62,6 +75,10 @@ class ResearchVerificationTests(unittest.TestCase):
         with patch.dict("os.environ", env, clear=False):
             self.assertEqual(find_positive_news(), [])
         openai.assert_called_once_with(api_key="test-key", timeout=45.0, max_retries=3)
+
+        research_call = client.responses.create.call_args
+        self.assertIn("multiple independent discovery passes", research_call.kwargs["input"])
+        self.assertEqual(research_call.kwargs["tools"], [{"type": "web_search"}])
 
 
 if __name__ == "__main__":
