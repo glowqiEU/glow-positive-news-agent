@@ -71,11 +71,12 @@ def editorial_score(story: dict) -> int:
 
 def rejection_reasons(story: dict, *, now: datetime, lookback_hours: int, min_score: int,
                       min_early_human_score: int, min_observational_score: int,
-                      min_weak_evidence_score: int) -> list[str]:
+                      min_weak_evidence_score: int, min_real_world_significance: int) -> list[str]:
     reasons = []
     title = str(story.get("title_lt") or "").strip()
     summary = str(story.get("summary_lt") or "").strip()
     score = _integer(story.get("total_score"), default=-1)
+    real_world_significance = _integer(story.get("real_world_significance"), default=-1)
     urls = ordered_sources(story)
     primary = canonicalize_url(story.get("primary_source") or "")
     evidence = _normalized(story, "evidence_level")
@@ -93,6 +94,10 @@ def rejection_reasons(story: dict, *, now: datetime, lookback_hours: int, min_sc
         reasons.append("component score outside 0-10")
     elif score != sum(components):
         reasons.append(f"total_score {score} != component sum {sum(components)}")
+    if real_world_significance < 0 or real_world_significance > 10:
+        reasons.append("missing/invalid real-world significance score")
+    elif real_world_significance < min_real_world_significance:
+        reasons.append(f"real_world_significance {real_world_significance} < {min_real_world_significance}")
     if not urls:
         reasons.append("no specific source URL")
     if not primary or not is_specific_source_url(primary):
