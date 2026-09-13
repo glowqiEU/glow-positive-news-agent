@@ -14,26 +14,37 @@ class ResearchVerificationTests(unittest.TestCase):
         audits = [
             {"candidate_index": 0, "verified": True, "primary_source_verified": True,
              "claim_supported": True, "freshness_verified": True, "significance_verified": True,
+             "real_world_significance_verified": True, "real_world_significance": 8,
              "progress_significance": "meaningful",
              "verification_notes": "checked", "corrected_summary_lt": "narrowed"},
             {"candidate_index": 1, "verified": True, "primary_source_verified": True,
              "claim_supported": False, "freshness_verified": True, "significance_verified": True,
+             "real_world_significance_verified": True, "real_world_significance": 7,
              "progress_significance": "meaningful"},
         ]
         result = _merge_verification(candidates, audits)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["summary_lt"], "narrowed")
         self.assertEqual(result[0]["verification_status"], "verified")
+        self.assertEqual(result[0]["real_world_significance"], 8)
 
     def test_duplicate_audit_index_fails_closed(self):
         candidates = [{"title_lt": "A"}]
         passing = {"candidate_index": 0, "verified": True, "primary_source_verified": True,
                    "claim_supported": True, "freshness_verified": True,
-                   "significance_verified": True, "progress_significance": "meaningful"}
+                   "significance_verified": True, "real_world_significance_verified": True,
+                   "real_world_significance": 8, "progress_significance": "meaningful"}
         self.assertEqual(_merge_verification(candidates, [passing, passing]), [])
 
     def test_missing_audit_fails_closed(self):
         self.assertEqual(_merge_verification([{"title_lt": "A"}], []), [])
+
+    def test_missing_significance_verification_fails_closed(self):
+        candidates = [{"title_lt": "A"}]
+        audit = {"candidate_index": 0, "verified": True, "primary_source_verified": True,
+                 "claim_supported": True, "freshness_verified": True, "significance_verified": True,
+                 "real_world_significance": 8, "progress_significance": "meaningful"}
+        self.assertEqual(_merge_verification(candidates, [audit]), [])
 
     def test_temporary_red_tide_absence_fails_verification(self):
         candidates = [{"title_lt": "Red tide not detected this week"}]
@@ -44,6 +55,8 @@ class ResearchVerificationTests(unittest.TestCase):
             "claim_supported": True,
             "freshness_verified": True,
             "significance_verified": False,
+            "real_world_significance_verified": True,
+            "real_world_significance": 2,
             "progress_significance": "temporary_or_routine",
             "verification_notes": "Routine weekly non-detection only.",
         }]
@@ -61,6 +74,8 @@ class ResearchVerificationTests(unittest.TestCase):
         self.assertIn("implemented, took effect, approved, opened, launched, deployed", prompt)
         self.assertIn("implementation milestone rather than proof that the ecosystem has already recovered", prompt)
         self.assertIn("Do not lower evidence standards to achieve human interest", prompt)
+        self.assertIn("real_world_significance", prompt)
+        self.assertIn("eVTOL pilot", prompt)
 
     @patch("news_agent.OpenAI")
     def test_openai_client_uses_bounded_timeout_and_retries(self, openai):
