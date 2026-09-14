@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import unittest
 
-from editorial import canonicalize_url, ordered_sources, rejection_reasons
+from editorial import canonicalize_url, component_score, ordered_sources, rejection_reasons
 
 NOW = datetime(2026, 9, 12, 12, tzinfo=timezone.utc)
 
@@ -44,9 +44,14 @@ class EditorialValidationTests(unittest.TestCase):
         story = valid_story(); story["development_at"] = "2026-09-12"
         self.assertIn("missing/invalid development timestamp", reasons(story))
 
-    def test_rejects_inconsistent_score_total(self):
-        story = valid_story(); story["total_score"] = 48
-        self.assertIn("total_score 48 != component sum 42", reasons(story))
+    def test_total_score_from_model_is_not_trusted(self):
+        story = valid_story(); story["total_score"] = 57
+        self.assertEqual(component_score(story), 42)
+        self.assertEqual(reasons(story), [])
+
+    def test_rejects_invalid_component_score(self):
+        story = valid_story(); story["freshness"] = 11
+        self.assertIn("component score outside 0-10", reasons(story))
 
     def test_requires_primary_evidence_metadata(self):
         story = valid_story(); story["primary_source_type"] = "news_article"; story["primary_evidence"] = ""
@@ -98,7 +103,7 @@ class EditorialValidationTests(unittest.TestCase):
             "positive_impact": 8,
             "interestingness": 9,
             "specific_evidence": 9,
-            "total_score": 44,
+            "total_score": 50,
             "summary_lt": "Nedidelis ankstyvos fazės tyrimas pateikė preliminarų rezultatą; klinikinė nauda dar neįrodyta.",
         })
         self.assertIn("human_early_phase requires score >= 45", reasons(story))
@@ -114,7 +119,7 @@ class EditorialValidationTests(unittest.TestCase):
             "positive_impact": 8,
             "interestingness": 9,
             "specific_evidence": 10,
-            "total_score": 45,
+            "total_score": 1,
             "summary_lt": "Nedidelis ankstyvos fazės tyrimas pateikė preliminarų rezultatą; klinikinė nauda dar neįrodyta.",
         })
         self.assertEqual(reasons(story), [])
