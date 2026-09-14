@@ -76,6 +76,9 @@ class ResearchVerificationTests(unittest.TestCase):
         self.assertIn("Do not lower evidence standards to achieve human interest", prompt)
         self.assertIn("real_world_significance", prompt)
         self.assertIn("eVTOL pilot", prompt)
+        self.assertIn("material restoration action can qualify for 6-7", prompt)
+        self.assertIn("single rehabilitated animal", prompt)
+        self.assertIn("runtime code recalculates the authoritative score deterministically", prompt)
 
     @patch("news_agent.OpenAI")
     def test_openai_client_uses_bounded_timeout_and_retries(self, openai):
