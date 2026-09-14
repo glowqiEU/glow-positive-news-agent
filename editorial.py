@@ -61,8 +61,21 @@ def ordered_sources(story: dict) -> list[str]:
     return ([primary] if primary in urls else []) + [url for url in urls if url != primary]
 
 
+def component_score(story: dict) -> Optional[int]:
+    """Return the deterministic component sum, or None when any component is invalid."""
+    values = []
+    for field in SCORE_FIELDS:
+        value = story.get(field)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0 or value > 10:
+            return None
+        values.append(value)
+    return sum(values)
+
+
 def editorial_score(story: dict) -> int:
-    base = _integer(story.get("total_score"), default=0)
+    base = component_score(story)
+    if base is None:
+        base = 0
     evidence = _normalized(story, "evidence_level")
     impact = _normalized(story, "impact_status")
     progress = _normalized(story, "positive_progress")
@@ -75,7 +88,7 @@ def rejection_reasons(story: dict, *, now: datetime, lookback_hours: int, min_sc
     reasons = []
     title = str(story.get("title_lt") or "").strip()
     summary = str(story.get("summary_lt") or "").strip()
-    score = _integer(story.get("total_score"), default=-1)
+    score = component_score(story)
     real_world_significance = _integer(story.get("real_world_significance"), default=-1)
     urls = ordered_sources(story)
     primary = canonicalize_url(story.get("primary_source") or "")
@@ -87,13 +100,10 @@ def rejection_reasons(story: dict, *, now: datetime, lookback_hours: int, min_sc
         reasons.append("missing title")
     if not summary:
         reasons.append("missing summary")
-    if score < min_score:
-        reasons.append(f"score {score} < {min_score}")
-    components = [_integer(story.get(field), default=-1) for field in SCORE_FIELDS]
-    if any(value < 0 or value > 10 for value in components):
+    if score is None:
         reasons.append("component score outside 0-10")
-    elif score != sum(components):
-        reasons.append(f"total_score {score} != component sum {sum(components)}")
+    elif score < min_score:
+        reasons.append(f"score {score} < {min_score}")
     if real_world_significance < 0 or real_world_significance > 10:
         reasons.append("missing/invalid real-world significance score")
     elif real_world_significance < min_real_world_significance:
@@ -138,11 +148,11 @@ def rejection_reasons(story: dict, *, now: datetime, lookback_hours: int, min_sc
             reasons.append("development timestamp is in the future")
         elif development_at < now - timedelta(hours=lookback_hours):
             reasons.append(f"underlying development older than {lookback_hours}h")
-    if evidence == "human_early_phase" and score < min_early_human_score:
+    if score is not None and evidence == "human_early_phase" and score < min_early_human_score:
         reasons.append(f"human_early_phase requires score >= {min_early_human_score}")
-    if evidence == "observational_human" and score < min_observational_score:
+    if score is not None and evidence == "observational_human" and score < min_observational_score:
         reasons.append(f"observational_human requires score >= {min_observational_score}")
-    if evidence in {"preclinical_animal", "laboratory_model"} and score < min_weak_evidence_score:
+    if score is not None and evidence in {"preclinical_animal", "laboratory_model"} and score < min_weak_evidence_score:
         reasons.append(f"{evidence} requires score >= {min_weak_evidence_score}")
     return reasons
 
