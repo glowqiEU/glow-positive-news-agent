@@ -157,7 +157,10 @@ Real-world significance rules:
 - 6-7: concrete meaningful benefit to a defined group/system, a substantive intervention already underway, or a strong validated human/real-world result.
 - 8-10: major direct measured benefit, substantial system change, strong recovery, or unusually consequential improvement with clear real-world stakes.
 - Do not inflate this score because a technology is futuristic, because a source calls something historic, or because future scale could be large.
-- A demonstration such as an eVTOL pilot with no demonstrated transport, emissions, safety, or access benefit should generally remain below 6. A treatment approval for an unmet need, a strong patient-outcome trial, measured species recovery, or a substantive restoration intervention may be 6 or higher when the evidence supports that significance.
+- A demonstration such as an eVTOL pilot with no demonstrated transport, emissions, safety, or access benefit should generally remain below 6.
+- A material restoration action can qualify for 6-7 before final ecological recovery is measured when the physical intervention itself has already happened at meaningful scale: for example removing a consequential barrier, reconnecting habitat, restoring a substantial river/wetland/reef area, or beginning a substantive field intervention with concrete scope. Keep impact_status=implemented_milestone unless recovery itself has been measured.
+- Do not give 6+ merely for announcing a restoration plan, signing a partnership, receiving funding, or releasing a single rehabilitated animal without evidence of broader conservation significance.
+- A treatment approval for an unmet need, a strong patient-outcome trial, measured species recovery, or a substantive restoration intervention may be 6 or higher when the evidence supports that significance.
 
 Editorial rules:
 - Avoid clickbait, vague hope, PR-only claims, opinion pieces, celebrity news, sport, and trivial feel-good stories.
@@ -165,7 +168,7 @@ Editorial rules:
 - Do not exaggerate causality or certainty.
 - A story should have a concrete result, number, milestone, trial outcome, deployment, policy effect, population change, or measured improvement.
 - Score each category 0-10: freshness, credibility, positive_impact, interestingness, specific_evidence.
-- total_score is the sum, max 50.
+- total_score is informational model output only; runtime code recalculates the authoritative score deterministically from the five component scores.
 - Return at most {max_candidates} stories, strongest first.
 - Write title_lt and summary_lt in natural Lithuanian, concise and factual.
 - If evidence is preliminary, laboratory-only, animal-only, observational, not yet deployed, or otherwise limited, say that clearly in summary_lt.
@@ -235,6 +238,8 @@ For each candidate:
 - Reject causal overstatement, patient-benefit overstatement, planned-only activity, problem characterization presented as progress, and claims that cannot be checked.
 - Independently classify progress_significance. A routine weekly non-detection, temporary absence of harm, normal conditions, or "nothing bad happened" is temporary_or_routine unless the sources establish a sustained recovery/trend or clearly consequential improvement.
 - Independently score real_world_significance from 0 to 10 using the same rubric: 0-3 technical/routine with no material demonstrated benefit; 4-5 plausible or limited/early practical benefit; 6-7 concrete meaningful benefit or substantive intervention; 8-10 major direct measured benefit or substantial system change. Score what has happened now, not promised future scale.
+- For restoration, do not require measured ecological recovery before assigning 6-7 when a material physical intervention has already happened at meaningful scale. Examples include removing a consequential barrier, reconnecting habitat, restoring a substantial river/wetland/reef area, or beginning a substantive field intervention with concrete scope. Keep it as implemented_milestone unless recovery itself is measured.
+- Do not award 6+ for a restoration announcement, funding/partnership alone, or a single rehabilitated-animal release without broader conservation significance.
 - Mark real_world_significance_verified=true only when the sources are sufficient to support that significance score. If the practical significance is unclear, score conservatively or set verified=false.
 - For restoration or reform launches, distinguish an implemented milestone from a measured recovery or outcome. Do not infer success merely because implementation began.
 - Correct summary_lt only to narrow or qualify an otherwise supported candidate. Never rescue an unsupported central claim.
